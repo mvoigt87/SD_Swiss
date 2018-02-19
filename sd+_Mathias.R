@@ -12,6 +12,7 @@ library(HMDHFDplus)
 library(MortalitySmooth)
 library(MortHump)
 library(tidyverse)
+library(plyr)
 # library(LifeTables)
 
 # 0.2 working directory
@@ -23,7 +24,6 @@ name.f <- "m.voigt87@gmx.de"
 pw.m <- "1320270854"
 pw.f <- "43700"
 
-### For Males!
 
 females <- readHMDweb(CNTRY = "CHE", item = "fltper_1x1", username = name.m, password = pw.m)
 
@@ -33,7 +33,7 @@ fit <- Mort2Dsmooth(x = unique(females$Age), y = unique(females$Year), Z = matri
 # plots
 plot(fit)
 
-# use the predict function
+# use the predict function to interpolate
 females$mxs <- as.vector(predict(fit, type = "response"))
 
 lt <- by(data = females$mxs, INDICES = females$Year, FUN = function(x){LT(Mx = x, mxsmooth = FALSE, 
@@ -48,7 +48,7 @@ head(females)
 #femalesplus <- data.frame(Year = rep(unique(females$Year), each = 1100), x = rep(seq(0,109.9,0.1),length(unique(females$Year))))
 #femalesplus$dxs <- predict(fit, newdata = data.frame(y = femalesplus$Year, x = femalesplus$x), type = "response")
 
-
+### ---------
 ### For Males
 ### ---------
 
@@ -87,19 +87,22 @@ par(mfrow=c(1,1))
 #   
 # }
 
-# sdplus <- function(lt){
-#   
-#   dx <- lt$dxs / sum(lt$dxs)
-#   x <- lt$Age
-#   m <- which.max(dx[x > 50]) + 51
-#   dx <- dx[m:length(dx)]
-#   x  <-  x[m:length(x)]
-#   mean <- sum(x * dx) / sum(dx)
-#   s <- sqrt(sum((x - m)^2 * dx) / sum(dx))
-#   
-#   return(s)
-#   
-# }
+ # sdplus <- function(lt){
+ #  
+ #  dx <- lt$dxs / sum(lt$dxs)
+ #  x <- lt$Age
+ #  m <- which.max(dx[x > 50]) + 51
+ #  dx <- dx[m:length(dx)]
+ #  x  <-  x[m:length(x)]
+ #  mean <- sum(x * dx) / sum(dx)
+ #  s <- sqrt(sum((x - m)^2 * dx) / sum(dx))
+ # 
+ #  return(s)
+ # 
+ # }
+ # 
+ # sdplus(females)
+ 
 # 
 # # apply both functions
 # png("EPC/edagger.png", width = 30, height = 15, units = "cm", res = 600)
@@ -112,7 +115,9 @@ par(mfrow=c(1,1))
 # plot(unique(females$Year), as.vector(by(data = females, INDICES = females$Year, FUN = sdplus)), type = "l")
 
 
-### ----------------- Experimenting
+
+
+### ----------------- Experimenting !!!
 
 #######################################################
 ### Standard deviation (Tuljarpurka & Edwards 2005) ###
@@ -125,7 +130,6 @@ dx.fem <- tapply(X=females$dxs,
                  FUN=sum)
 
 # ex matrix - females
-# dx matrix - females
 ex.fem <- tapply(X=females$exs,
                  INDEX=list(Age=females$Age,
                             Year=females$Year),
@@ -137,53 +141,159 @@ ex.fem <- tapply(X=females$exs,
 sd10.fem <- apply(X=dx.fem[-(1:11),], MARGIN = 2, FUN = function(x)
                   sd(c(x))) 
 summary(sd10.fem) 
-plot(sd10.fem)
+plot(x=unique(females$Year),sd10.fem)
 
 # from age 0
 sd.fem <- apply(X=dx.fem, MARGIN = 2, FUN = function(x)
                 sd(c(x))) 
-plot(sd.fem) 
+plot(x=unique(females$Year),sd.fem)
 
 ###########
 ### IQR ###
 ###########
 IQR.fem <- apply(X=dx.fem, MARGIN = 2, FUN = function(x)
-                  IQR(x))
+  IQR(x))
 summary(IQR.fem)
-plot(IQR.fem)
+plot(x=unique(females$Year),log(IQR.fem))
+
+IQR.fem <- as.data.frame(IQR.fem) %>% mutate(Year=seq(1876,2014,1))
+  
+IQR.fem %>%  ggplot(aes(x=Year,y=IQR.fem)) +
+  geom_point() +
+  scale_y_continuous(name="IQR") +
+  theme_bw()
 
 ################
 ### e-Dagger ###
 ################
 
-# needs to be applied to the life table
-# formula based on: http://pages.stern.nyu.edu/~dbackus/BCH/demography/ZhangVaupel_ageseparating_DR_09.pdf
-# and: www.demogr.mpg.de/papers/technicalreports/tr-2012-002.pdf
+### ---------------------------------------------------------
+# formula based on: www.demogr.mpg.de/papers/technicalreports/tr-2012-002.pdf
+### alternative: (http://pages.stern.nyu.edu/~dbackus/BCH/demography/ZhangVaupel_ageseparating_DR_09.pdf)
 
 e.dagger.fun <- function(lt) {
-  len <- nrow(lt)
-  ea <- ((lt$Tx + c(lt$Tx[-1],0))/2) / (lt$Lx)
-  da <- lt$dxs/sum(lt$dxs)
-  e.dagger <- sum(da * ea)
+  e.dagger <- sum(lt$dxs[lt$Age]*1/2*(lt$ex[lt$Age]+lt$ex[lt$Age+1]))
   return(e.dagger)
 }
 
-e.dagger.fun(subset(females,Year==2010))
+# creating a new data frame for easier plotting and handling the summarized values 
+e.d.fem <- as.data.frame(unique(females$Year))
+colnames(e.d.fem)[1] <- "Year"
+e.d.fem <- e.d.fem %>% mutate(edagger=NA)
+# for now with a for loop
+for (i in 1876:2014) {
+  e.d.fem$edagger[e.d.fem$Year==i] <- e.dagger.fun(subset(females,Year==i & Age<95))
+}
 
-# 
-# test <- sapply(X=females,FUN = e.dagger.fun)
-# 
-# e.d.fem <- as.data.frame(unique(females$Year))
-# e.d.fem <- e.d.fem %>% mutate()
-# 
-# for (i in 1876:2014) {
-#   e.d.fem$edagger[e.d.fem$Year==1] <- c(e.dagger.fun(subset(females,Year==i)))
-#                }
+## E-dagger plot (reasonable)
+e.d.fem %>% ggplot(aes(x=Year, y=edagger))+ 
+  geom_point() +
+  scale_y_continuous(name = "e+ in years") +
+  theme_bw()
+
+
+# dplyr version (to be finished)
+
+# EDAG <- females %>% group_by(Year) %>% summarise(edagger = sum(dxs[Age]*1/2*(ex[Age]+ex[Age+1])))
+
 
 #######################
 ### Keyfitz entropy ###
 #######################
-# H <- e.dagger.fun()/exs
-# H
 
-# sum(dxs(x)*0.5*(exs(x)+exs(x+1)))
+e.d.fem$ex <- females$exs[females$Age==0]
+e.d.fem$H <- e.d.fem$edagger/e.d.fem$ex
+
+e.d.fem %>% ggplot(aes(x=Year, y=H))+ 
+  geom_point() +
+  scale_y_continuous(name = "Keyfitz' LT Entropy") +
+  theme_bw()
+
+
+
+##########################################
+### From Modal Age at death to the SD+ ###
+##########################################
+
+## Calculate the mode over the the dx after age 5 (based on Canudas-Romo 2010)
+## https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3000019/) - Appendix A (formula A2)
+
+## Function to calculate the mode (after age 5) 
+#  x is the age with the highest number of deaths in the life table at the time
+MDA.fun <- function(lt) {
+  x <- lt$Age[which.max(lt$dxs)]
+  M <- x + ((lt$dxs[x]-lt$dxs[x-1])/(lt$dxs[x]-lt$dxs[x-1])+(lt$dxs[x]-lt$dxs[x+1]))
+  return(M)
+}
+
+
+# test <- MDA.fun(subset(females,Year==1960 & Age>5))
+# test 
+# Seems to work fine with different years
+
+# for each year - give me the age after 5 where the most deaths occur
+# the not so elegant way for now:
+mdsd.fem <- as.data.frame(unique(females$Year))
+colnames(mdsd.fem)[1] <- "Year"
+mdsd.fem <- mdsd.fem %>% mutate(M=NA)
+
+for (j in 1876:2014) {
+  mdsd.fem$M[mdsd.fem$Year==j] <- MDA.fun(subset(females, Year==j & Age>5))
+}
+
+summary(mdsd.fem)
+
+### Plot
+
+mdsd.fem %>% ggplot(aes(x=Year, y=M)) +
+              geom_point() +
+              scale_x_continuous(name="year") + 
+              scale_y_continuous(name="modal age at death (after age 5)") +
+              theme_bw()
+
+
+
+## dplyr - version Calculate the modal age at death after age 5 by year
+# fem.test <- females %>% filter(Age>5) %>% group_by(Year) %>% 
+#   dplyr::summarise(MDA = MDA.fun(lt))
+
+
+
+
+
+
+
+## --------------------------------------------------------------------------- ##
+## general mode
+# Mode <- function(x) {
+#   ux <- unique(x)
+#   ux[which.max(tabulate(match(x, ux)))]
+# }
+
+# Kannisto (2001) - M(t) = x + (d(x,t)-d(x-1,t))/(2d(x,t)-d(x-1,t)-d(x+1,t))
+## --------------------------------------------------------------------------- ##
+
+
+
+
+
+
+
+
+###### function to fit a Gompertz model for adult mortality
+
+# DENSITY FUNCTION Gompertz
+# NOTE: x=x, shape=a, scale=b
+x <- seq(5,35,1)
+dwei <- function(x, a, b){
+  part.1   <- (a/b)
+  part.2   <- (x/b)^(a-1)
+  part.3   <- exp(-(x/b)^a)
+  f.x.a.b  <- part.1*part.2*part.3
+  return(f.x.a.b)
+}
+
+
+
+
+
