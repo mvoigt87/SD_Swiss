@@ -70,29 +70,44 @@ delta <- 0.1
 xs <- seq(min(x), max(x), delta)
 ms <- length(xs)
 
-## fitted hazard functions and its cumulative (H)
+## new basis over new ages
+xl <- min(x)
+xr <- max(x)
+xmax <- xr + 0.01 * (xr - xl)
+xmin <- xl - 0.01 * (xr - xl)
+# generate an equally-spaced B-Splines basis over the abscissa (applying Mort1Dsmooth)
+Bxs <- MortSmooth_bbase(xs, xmin, xmax, fit$ndx[1], fit$deg[1])
 
-# baseline hazard
-h0 <- exp(fit$logmortality)
-# prepare matrizes
-h <- matrix(NA, ms, n)
+## over years are the same
+By <- fit$By
+## fitted coefficients
+betas <- fit$coef
+## log-mortality (linear predictor) over new ages and years (output: log hazard)
+ln.h <- MortSmooth_BcoefB(Bxs, By, betas)
+## hazard
+h <- exp(ln.h)
+## cumulative hazard using cumsum
 H <- matrix(0, ms, n)
-
-# Apply a cubic spline function to the h0 [at time i] and then over the decimal ages
 for(i in 1:n){
-  fun <- splinefun(x, h0[,i])
-  h[,i] <- fun(xs)
-  for(j in 2:ms){
-    H[j,i] <- integrate(fun, xs[1], xs[j])$value
-  }
+  H[,i] <- cumsum(h[,i]*delta)
 }
-## fitted survival functions (from the cummulative hazard)
+# ## fitted hazard functions and its cumulative
+# h0 <- exp(fit$logmortality)
+# h <- matrix(NA, ms, n)
+# H <- matrix(0, ms, n)
+# for(i in 1:n){
+#   fun <- splinefun(x, h0[,i])
+#   h[,i] <- fun(xs)
+#   for(j in 2:ms){
+#     H[j,i] <- integrate(fun, xs[1], xs[j])$value
+#   }
+# }
+## fitted survival functions
 S <- apply(H, 2, function(x){exp(-x)})
 ## fitted density functions
 f <- h * S
 
 image(t(f))
-
 
 #### function to obtain the standard deviation, mean ages etc. ####
 
@@ -143,7 +158,7 @@ sdfun <- function(x, smooth = FALSE, plot = FALSE, trun = 0, inter = FALSE){
     i <- 1
     idx <- ranks[i]
     mode <- x$Age[idx]
-    while(mode < 5){                    
+    while(mode < 5){
       i <- i + 1
       idx <- ranks[i]
       mode <- x$Age[idx]
@@ -162,10 +177,11 @@ sdfun <- function(x, smooth = FALSE, plot = FALSE, trun = 0, inter = FALSE){
   mean <- sum(x$Age * x$dx) / sum(x$dx)
   
   sdev <- sqrt(sum((x$Age - mean)^2 * x$dx) / sum(x$dx))
-  
+
   return(sdev)
   
 }
+
 
 #### apply ####
 
@@ -259,8 +275,7 @@ IQR.FUN <- function(x, smooth = FALSE, inter = FALSE){
       x$dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
       
     }
-    
- }
+  }
   ### Now the IQR function:
   x$rel.DX.CUM <- cumsum(x$dx)/max(cumsum(x$dx))
   Q1 <- x$Age[min(which(x$rel.DX.CUM>0.25))]
@@ -290,8 +305,8 @@ IQR.CH.M <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = IQR.FUN, smooth
 IQR.CH.F <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = IQR.FUN, smooth = TRUE, 
                inter = seq(0,110,0.1))
 
-plot(unique(data.ch.m$Year), IQR.CH.M, type = "l", xlab = "", ylab = "IQR", las = 1)
-lines(unique(data.ch.m$Year),IQR.CH.F, col="red")
+# plot(unique(data.ch.m$Year), IQR.CH.M, type = "l", xlab = "", ylab = "IQR", las = 1)
+# lines(unique(data.ch.m$Year),IQR.CH.F, col="red")
 
 
 ### Plot IQR (ggplot)
@@ -306,11 +321,116 @@ IQR <- bind_rows(IQR.F,IQR.M)
 IQR %>% ggplot(aes(x=Year,y=IQR,color=sex)) +
   geom_line() +
   scale_x_continuous(name="") +
-  scale_y_continuous(name="IQR") +
-  scale_color_discrete(name="")+
+  scale_y_continuous(name="IQR in years") +
+  scale_colour_manual(values = c("orange", "darkgrey"), name="") +
   theme_bw()
 
 
+#######################################################################################################
+#######################################################################################################
+#######################################################################################################
+
+
+#####################################
+### CV - coefficient of variation ###
+#####################################
+
+# source: www.demogr.mpg.de/papers/technicalreports/tr-2012-002.pdf
+
+### 1. First step
+
+## assign new dx values (smoothed)
+
+dx.FUN <- function(x, smooth = FALSE, inter = FALSE){
+  
+  ### If smooth dx' are provided
+  if(smooth == TRUE){
+    
+    if(is.numeric(inter)){
+      
+      dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
+      
+      x <- data.frame(Year = rep(x$Year,length(inter)), Age = inter)
+      
+      x$dx <- dx #* c(diff(inter),1)
+     
+    }else{
+      
+      x$dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
+    }
+  }
+  
+ return(x$dx)
+  
+}
+
+### 2. Second step - build the life tables on the "new" dx values
+## !!! For the indicators which require information on life expectancy
+
+CV.FUN <- function(x){
+  
+# where x is the life table with the smoothed dx
+  
+# Obtain the lx from the dxs
+x$lx <- 1:length(x$Age)
+x$lx[1] <- 1
+for (i in 2:length(x$Age)) {
+  x$lx[i] <- x$lx[i - 1] - x$dxs[i - 1]
+}
+# Lx values
+x$Lx <- x$lx - (0.5*x$dx)
+# Tx values
+x$Tx <- 1:length(x$Age)
+for (i in 1:length(x$Age)) {
+  x$Tx[i] <- sum(x$Lx[i:length(x$Age)])
+}
+# ex values
+x$ex[x$Age] <- x$Tx[x$Age] / x$Lx[x$Age]
+
+# build from the SD and the life expectancy
+
+mean <- sum(x$Age * x$dx) / sum(x$dxs)
+
+sdev <- sqrt(sum((x$Age - mean)^2 * x$dxs) / sum(x$dxs))
+
+# coefficient of variance - CV
+cv <- (sdev)/(x$Age + x$ex)
+
+return(c(mean, sdev, CV))
+
+}
+
+
+
+#### apply ####
+
+# male
+data.ch.m <- readHMDweb(CNTRY = "CHE", item = "mltper_1x1", username = name.m, password = pw.m)
+data.ch.m <- data.ch.m[,c("Year","Age","dx")]
+
+# female
+data.ch.f <- readHMDweb(CNTRY = "CHE", item = "fltper_1x1", username = name.m, password = pw.m)
+data.ch.f <- data.ch.f[,c("Year","Age","dx")]
+
+### time series
+
+### time series for males and females
+
+data.ch.m$dxs <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = IQR.FUN, smooth = TRUE, 
+               inter = seq(0,110,0.1))
+data.ch.f$dxs <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = IQR.FUN, smooth = TRUE, 
+               inter = seq(0,110,0.1))
+
+### Apply the CV function
+
+CV.CH.mal <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = CV.FUN, smooth = TRUE, 
+                inter = seq(0,110,0.1))
+
+CV.CH.fem <- CV.FUN(data.ch.f)
+
+#######################################################################################################
+#######################################################################################################
+#######################################################################################################
 
 ################
 ### e-Dagger ###
@@ -320,10 +440,52 @@ IQR %>% ggplot(aes(x=Year,y=IQR,color=sex)) +
 # formula based on: www.demogr.mpg.de/papers/technicalreports/tr-2012-002.pdf
 ### alternative: (http://pages.stern.nyu.edu/~dbackus/BCH/demography/ZhangVaupel_ageseparating_DR_09.pdf)
 
-e.dagger.fun <- function(lt) {
-  e.dagger <- sum(lt$dxs[lt$Age]*1/2*(lt$ex[lt$Age]+lt$ex[lt$Age+1]))
+
+EDAG.FUN <- function(x, smooth = FALSE, inter = FALSE){
+  
+  ### If smooth dx' are provided
+  if(smooth == TRUE){
+    
+    if(is.numeric(inter)){
+      
+      dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
+      
+      x <- data.frame(Year = rep(x$Year,length(inter)), Age = inter)
+      
+      x$dx <- dx #* c(diff(inter),1)
+    }else{
+      
+      x$dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
+      
+    }
+  }
+  # computing e-dagger and Keyfitz' entropy based on Sholnikov/Andreev
+  for(i in min(x$Age):max(x$Age)) {
+  e.dagger <- sum(x$dxs[x$Age==i]*1/2*(x$ex[x$Age==i]+x$ex[x$Age==i+1]))
+  # H <- e.dagger/x$ex[x$Age==0]
+  }
   return(e.dagger)
+
 }
+
+### apply
+
+# single year
+EDAG.FUN(data.ch.m[data.ch.m$Year == 1990,], smooth = TRUE, inter = seq(0,110,0.1))
+
+for (i in 0:max(data.ch.f$Age)) {
+ED.test <- sum(data.ch.f$dx[data.ch.f$Year==1990 & data.ch.f$Age==i])*1/2*(data.ch.f$ex)
+}
+
+
+
+### time series for males and females
+
+EDAG.CH.M <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = IQR.FUN, smooth = TRUE, 
+               inter = seq(0,110,0.1))
+EDAG.CH.F <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = IQR.FUN, smooth = TRUE, 
+               inter = seq(0,110,0.1))
+
 
 # creating a new data frame for easier plotting and handling the summarized values 
 e.d.fem <- as.data.frame(unique(females$Year))

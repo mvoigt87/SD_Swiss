@@ -12,17 +12,20 @@
 if(Sys.info()["nodename"] == "CD-5VV9QK2"){
   
   setwd("D:/switchdrive/SNC 2.0/TOMCOD")
+  load("D:/hmd_user.RData")
   
 }
+
+# if it is not done yet, define your HMD username (us) and password (pw)
 
 #### load data ####
 library(HMDHFDplus)
 
-deaths <- readHMDweb(CNTRY = "CHE", item = "Deaths_1x1", username = "", password = "")
+deaths <- readHMDweb(CNTRY = "CHE", item = "Deaths_1x1", username = us, password = pw)
 
 deaths <- deaths[deaths$Age >= 10,]
 
-expos  <- readHMDweb(CNTRY = "CHE", item = "Exposures_1x1", username = "", password = "")
+expos  <- readHMDweb(CNTRY = "CHE", item = "Exposures_1x1", username = us, password = pw)
 
 expos <- expos[expos$Age >= 10,]
 
@@ -66,17 +69,36 @@ delta <- 0.1
 xs <- seq(min(x), max(x), delta)
 ms <- length(xs)
 
-## fitted hazard functions and its cumulative
-h0 <- exp(fit$logmortality)
-h <- matrix(NA, ms, n)
+## new basis over new ages
+xl <- min(x)
+xr <- max(x)
+xmax <- xr + 0.01 * (xr - xl)
+xmin <- xl - 0.01 * (xr - xl)
+Bxs <- MortSmooth_bbase(xs, xmin, xmax, fit$ndx[1], fit$deg[1])
+## over years are the same
+By <- fit$By
+## fitted coefficients
+betas <- fit$coef
+## log-mortality (linear predictor) over new ages and years
+ln.h <- MortSmooth_BcoefB(Bxs, By, betas)
+## hazard
+h <- exp(ln.h)
+## cumulative hazard using cumsum
 H <- matrix(0, ms, n)
 for(i in 1:n){
-  fun <- splinefun(x, h0[,i])
-  h[,i] <- fun(xs)
-  for(j in 2:ms){
-    H[j,i] <- integrate(fun, xs[1], xs[j])$value
-  }
+  H[,i] <- cumsum(h[,i]*delta)
 }
+# ## fitted hazard functions and its cumulative
+# h0 <- exp(fit$logmortality)
+# h <- matrix(NA, ms, n)
+# H <- matrix(0, ms, n)
+# for(i in 1:n){
+#   fun <- splinefun(x, h0[,i])
+#   h[,i] <- fun(xs)
+#   for(j in 2:ms){
+#     H[j,i] <- integrate(fun, xs[1], xs[j])$value
+#   }
+# }
 ## fitted survival functions
 S <- apply(H, 2, function(x){exp(-x)})
 ## fitted density functions
