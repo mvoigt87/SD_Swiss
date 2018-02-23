@@ -12,7 +12,7 @@ library(HMDHFDplus)
 library(MortalitySmooth)
 library(MortHump)
 library(tidyverse)
-library(plyr)
+# library(plyr)
 
 #### set working directory ####
 if(Sys.info()["nodename"] == "CD-5VV9QK2"){
@@ -21,6 +21,7 @@ if(Sys.info()["nodename"] == "CD-5VV9QK2"){
   
 }
 
+set.seed(17952)
 
 # 0.3 set passworts for HMDHFDplus
 name.m <- "mathias.voigt4@uni-rostock.de"
@@ -91,6 +92,7 @@ H <- matrix(0, ms, n)
 for(i in 1:n){
   H[,i] <- cumsum(h[,i]*delta)
 }
+
 # ## fitted hazard functions and its cumulative
 # h0 <- exp(fit$logmortality)
 # h <- matrix(NA, ms, n)
@@ -108,6 +110,104 @@ S <- apply(H, 2, function(x){exp(-x)})
 f <- h * S
 
 image(t(f))
+
+
+#### building life tables from the fx ####
+
+dim(f)
+# radix of the table by year
+colSums(f)
+
+# survival function by year (beautiful ;) )
+matplot(S, type = "l", lty = 1, col = heat.colors(n = ncol(S)))
+
+# rough estimate of the life expectancy at birth
+colSums(S) / 10
+plot(y, colSums(S) / 10, type = "b", las = 1, main = "e0")
+
+
+# life table
+# reminder of the main functions
+# library(MortHump)
+# LT
+
+# build life table
+
+##  help variables
+# 1001 age groups
+N <- length(xs)
+# the 0.1 differences
+Widths <- rep(delta, length(xs))
+
+
+
+## FEMALES
+## large data frame which contains values in HMD format
+fem.smooth <- as.data.frame(rep(xs,n))
+colnames(fem.smooth) <- "xs"  
+fem.smooth <- fem.smooth %>% 
+  mutate(Year=rep(min(y):max(y), times=1, each=1001)) %>% 
+  # ax values (may be to be changed for the highest age groups)
+  mutate(ax = rep(Widths / 2, times=n))
+  # ... step in between
+
+# ------------------------------------------------------------
+# obtain the mx values from the smoothed hazard function
+dim(h)
+      ## get the hx in the right format
+      h.new <- as.data.frame(h)
+      h.new <- data.frame(mx=unlist(h.new, use.names = FALSE))
+# and add them as column to the femsmooth data frame
+# ------------------------------------------------------------  
+
+# continuing building the life table      
+fem.smooth <- fem.smooth %>% bind_cols(h.new) %>% 
+    # qx
+    mutate(qx = (Widths * mx) / (1 + (Widths - ax) * mx)) 
+# ------------------------------------------------------------
+ ## a little trick which would not work with a data frame to make the last qx=1
+ qx <- matrix(fem.smooth$qx)
+ qx[1:(0+1001)==(0+1001)] <- 1
+# ------------------------------------------------------------      
+ fem.smooth <- fem.smooth %>% select(-qx) %>%  bind_cols(as.data.frame(qx))
+ colnames(fem.smooth)[5] <- "qx"
+ fem.smooth <- fem.smooth %>% mutate(qx = ifelse(qx>1,1,qx)) %>% 
+ ## add the px
+ mutate(px = 1 - qx)
+ ## lx beginning at the estimated radix (sum f[,1])
+# ------------------------------------------------------------   
+    ## matrix operations: sum over the columns of the estimated f-values to obtain
+    ## the base/radix for the life table
+    radix.mat <- as.data.frame(matrix(data=colSums (f, na.rm = FALSE, dims = 1), nrow = 1)) %>% 
+    ## now making filling dummie values in between to make it the same length as the data frame
+    bind_rows(as.data.frame(matrix(data = 0,nrow = 1000, ncol = 139))) 
+    ## stack them in order and delete the extra variable
+    radix.mat <- stack(radix.mat) %>% select(-ind)
+# ------------------------------------------------------------   
+    
+## now add them to the large life table
+ fem.smooth <- fem.smooth %>% bind_cols(as.data.frame(radix.mat))
+ colnames(fem.smooth)[7] <- "lx"
+## use the dplyr group_by command to calculate the rest of the lx from the px
+ fem.smooth <- fem.smooth %>% group_by(Year) %>% mutate(lx = c(lx[1],lx[1] * cumprod(px))[1:N]) %>% 
+## dx values from the lx (alternatively from the smoothing algorithm)
+ group_by(Year) %>%  mutate(dx = c(-diff(lx),lx[N])) %>% 
+## Create the Lx from the lx and the dx
+ group_by(Year) %>% mutate(Lx = c(Widths[1:(N - 1)] * lx[2:N] + ax[1:(N - 1)] * dx[1:(N - 1)], lx[N] * ax[N])) %>% 
+ ## account for infinite Lx and NA
+ mutate(Lx = ifelse(is.infinite(Lx),1,Lx)) %>% mutate(Lx = ifelse(is.na(Lx),0,Lx)) %>% 
+## Calculate the Tx from the Lx
+ group_by(Year) %>% mutate(Tx = rev(cumsum(rev(Lx)))) %>% 
+## Finally obtain the life expectancy from the Tx and lx
+ group_by(Year) %>% mutate(ex = Tx / lx)
+      
+
+ ## test plot
+ 
+ fem.smooth %>% filter(xs==10) %>% ggplot(aes(x=Year,y=ex)) +
+                    geom_line() +
+                    theme_bw()
+ 
 
 #### function to obtain the standard deviation, mean ages etc. ####
 
@@ -348,7 +448,7 @@ dx.FUN <- function(x, smooth = FALSE, inter = FALSE){
     
     if(is.numeric(inter)){
       
-      dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
+      dxs <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
       
       x <- data.frame(Year = rep(x$Year,length(inter)), Age = inter)
       
@@ -356,11 +456,11 @@ dx.FUN <- function(x, smooth = FALSE, inter = FALSE){
      
     }else{
       
-      x$dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
+     dxs <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
     }
   }
   
- return(x$dx)
+ return(dxs)
   
 }
 
@@ -380,10 +480,7 @@ for (i in 2:length(x$Age)) {
 # Lx values
 x$Lx <- x$lx - (0.5*x$dx)
 # Tx values
-x$Tx <- 1:length(x$Age)
-for (i in 1:length(x$Age)) {
-  x$Tx[i] <- sum(x$Lx[i:length(x$Age)])
-}
+x$Tx <- rev(cumsum(rev(x$Lx)))
 # ex values
 x$ex[x$Age] <- x$Tx[x$Age] / x$Lx[x$Age]
 
@@ -396,8 +493,7 @@ sdev <- sqrt(sum((x$Age - mean)^2 * x$dxs) / sum(x$dxs))
 # coefficient of variance - CV
 cv <- (sdev)/(x$Age + x$ex)
 
-return(c(mean, sdev, CV))
-
+return(CV)
 }
 
 
@@ -412,13 +508,15 @@ data.ch.m <- data.ch.m[,c("Year","Age","dx")]
 data.ch.f <- readHMDweb(CNTRY = "CHE", item = "fltper_1x1", username = name.m, password = pw.m)
 data.ch.f <- data.ch.f[,c("Year","Age","dx")]
 
-### time series
+### single year
+
+dxs.m.1990 <- dx.FUN(data.ch.m[data.ch.m$Year == 1990,], smooth = TRUE, inter = seq(0,110,0.1))
 
 ### time series for males and females
 
-data.ch.m$dxs <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = IQR.FUN, smooth = TRUE, 
+dxs.m <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = dx.FUN, smooth = TRUE, 
                inter = seq(0,110,0.1))
-data.ch.f$dxs <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = IQR.FUN, smooth = TRUE, 
+data.ch.f$dxs <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = dx.FUN, smooth = TRUE, 
                inter = seq(0,110,0.1))
 
 ### Apply the CV function
@@ -426,7 +524,6 @@ data.ch.f$dxs <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = IQR.FUN, s
 CV.CH.mal <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = CV.FUN, smooth = TRUE, 
                 inter = seq(0,110,0.1))
 
-CV.CH.fem <- CV.FUN(data.ch.f)
 
 #######################################################################################################
 #######################################################################################################
