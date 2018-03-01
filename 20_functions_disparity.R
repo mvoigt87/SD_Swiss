@@ -26,6 +26,10 @@ if(Sys.info()["nodename"] == "CD-5VV9QK2"){
 
 ### load smoothed life tables
 
+load("FLT_HMD.Rdata")
+
+load("MLT_HMD.RData")
+
 ###################################################################
 #### function to obtain the standard deviation, mean ages etc. ####
 
