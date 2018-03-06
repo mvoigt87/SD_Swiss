@@ -24,11 +24,6 @@ if(Sys.info()["nodename"] == "CD-5VV9QK2"){
   
 }
 
-### load smoothed life tables
-
-load("FLT_HMD.Rdata")
-
-load("MLT_HMD.RData")
 
 ###################################################################
 #### function to obtain the standard deviation, mean ages etc. ####
@@ -104,14 +99,18 @@ sdfun <- function(x, smooth = FALSE, plot = FALSE, trun = 0, inter = FALSE){
   
 }
 
+### save function for standard deviation around the mode
+
+dump("sdfun", file = "sdfun.R")
+
 
 #### apply ####
 
-data <- readHMDweb(CNTRY = "CHE", item = "mltper_1x1", username = name.m, password = pw.m)
+load("FLT_HMD.Rdata")
 
-data <- data[,c("Year","Age","dx")]
+data <- fem.smooth[,c("Year","Age","dx","lx","ex")]
 
-sdfun(data[data$Year == 1988,], smooth = TRUE, plot = TRUE, trun = "mode", inter = seq(0,110,0.1))
+sdfun(data[data$Year == 1900,], smooth = TRUE, plot = TRUE, trun = "mode", inter = seq(0,110,0.1))
 
 ### time series
 
@@ -119,48 +118,49 @@ sd <- by(data = data, INDICES = data$Year, FUN = sdfun, trun = "mode", smooth = 
 
 plot(unique(data$Year), sd, type = "l", xlab = "", ylab = "sd", las = 1)
 
+##################################################################################
+##################################################################################
+##################################################################################
 
-#### comparison ####
+#####################################
+### CV - coefficient of variation ###
+#####################################
 
-par(mfrow = c(1,2))
+# source Sholnikov/Andreev 2010: http://www.demogr.mpg.de/papers/technicalreports/tr-2010-001.pdf
 
-for(trun in c(0,"mode")){
+### Absolute measure for dispersion
+
+## Assuming the dx are smoothed in a previous step
+
+CV.FUN <- function(x){
   
-  plot(1, 1, type = "n", ylim = c(ifelse(trun == 0, 10, 3),ifelse(trun == 0, 35, 6)), xlim = c(1960, 2020), xlab = "", ylab = "sd", las = 1, main = paste("truncated at",trun))
+  mean <- sum(x$Age * x$dx) / sum(x$dx)
   
-  for(ctry in c("CHE","NLD")){
-    
-    cat("\n",ctry)
-    
-    for(sex in c("m","f")){
-      
-      cat("\n","-",sex)
-      
-      data <- readHMDweb(CNTRY = ctry, item = paste(sex,"ltper_1x1",sep = ""), username = name.m, password = pw.m)
-      
-      data <- data[,c("Year","Age","dx")]
-      
-      sd <- by(data = data, INDICES = data$Year, FUN = sdfun, trun = trun, smooth = TRUE, inter = c(seq(0,110,0.1)))
-      
-      col <- ifelse(sex == "m", "blue", "red")
-      
-      lty <- ifelse(ctry == "CHE", 1, 2)
-      
-      lines(unique(data$Year), sd, col = col, lty = lty)
-      
-    }
-    
-  }
+  sdev <- sqrt(sum((x$Age - mean)^2 * x$dx) / sum(x$dx))
   
-  legend("topright", legend = c("CH females", "CH males", "NL females", "NL males"), lty = c(1,1,2,2), col = c("red","blue","red","blue"))
+  # coefficient of variance - CV
+  cv <- ((sdev)/mean) * 100
+  
+  return(cv)
   
 }
 
-par(mfrow = c(1,1))
 
-dev.off()
+#### save as a global function ####
 
-#####
+dump("CV.FUN", file="CV_FUN.R")
+
+
+  # ## test
+  # data <- mal.smooth %>% select(dx,Age,Year,ex)
+  # data$Year <- as.numeric(data$Year)
+  # 
+  # CV.1990 <- CV.FUN(data[data$Year == 1990,])
+
+
+##################################################################################
+##################################################################################
+##################################################################################
 
 ###########
 ### IQR ###
@@ -169,172 +169,25 @@ dev.off()
 ### Attempt to write a similar efficient function compared to the sd.fun
 ## Input: life table-data frame (more specific, dx values, x, and years)
 
-IQR.FUN <- function(x, smooth = FALSE, inter = FALSE){
-  
-  ### If smooth dx' are provided
-  if(smooth == TRUE){
-    
-    if(is.numeric(inter)){
-      
-      dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
-      
-      x <- data.frame(Year = rep(x$Year,length(inter)), Age = inter)
-      
-      x$dx <- dx #* c(diff(inter),1)
-      
-    }else{
-      
-      x$dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
-      
-    }
-  }
-  ### Now the IQR function:
+IQR.FUN <- function(x){
+    ### IQR function:
   x$rel.DX.CUM <- cumsum(x$dx)/max(cumsum(x$dx))
   Q1 <- x$Age[min(which(x$rel.DX.CUM>0.25))]
   Q3 <- x$Age[min(which(x$rel.DX.CUM>0.75))]
-  IQR <- Q1 - Q3
+  IQR <- Q3 - Q1
   return(IQR)
 }
 
+### Save the function in the R Profile
 
-#### apply IQR ####
+dump("IQR.FUN", file="IQR_FUN.R")
 
-# male
-data.ch.m <- readHMDweb(CNTRY = "CHE", item = "mltper_1x1", username = name.m, password = pw.m)
-data.ch.m <- data.ch.m[,c("Year","Age","dx")]
+  ### test
+  # data <- mal.smooth %>% select(dx,Age,Year)
+  # data$Year <- as.numeric(data$Year)
+  # 
+  # IQR1990 <- IQR.FUN(subset(data,Year==1990))
 
-# female
-data.ch.f <- readHMDweb(CNTRY = "CHE", item = "fltper_1x1", username = name.m, password = pw.m)
-data.ch.f <- data.ch.f[,c("Year","Age","dx")]
-
-# single year
-IQR.FUN(data.ch.m[data.ch.m$Year == 1988,], smooth = TRUE, inter = seq(0,110,0.1))
-
-### time series for males and females
-
-IQR.CH.M <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = IQR.FUN, smooth = TRUE, 
-               inter = seq(0,110,0.1))
-IQR.CH.F <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = IQR.FUN, smooth = TRUE, 
-               inter = seq(0,110,0.1))
-
-# plot(unique(data.ch.m$Year), IQR.CH.M, type = "l", xlab = "", ylab = "IQR", las = 1)
-# lines(unique(data.ch.m$Year),IQR.CH.F, col="red")
-
-
-### Plot IQR (ggplot)
-
-IQR.M <- as.data.frame(cbind(IQR.CH.M,unique(data.ch.m$Year))) %>% mutate(sex="male")
-colnames(IQR.M) <- c("IQR","Year","sex")
-IQR.F <- as.data.frame(cbind(IQR.CH.F,unique(data.ch.f$Year))) %>% mutate(sex="female")
-colnames(IQR.F) <- c("IQR","Year","sex")
-
-IQR <- bind_rows(IQR.F,IQR.M)
-
-IQR %>% ggplot(aes(x=Year,y=IQR,color=sex)) +
-  geom_line() +
-  scale_x_continuous(name="") +
-  scale_y_continuous(name="IQR in years") +
-  scale_colour_manual(values = c("orange", "darkgrey"), name="") +
-  theme_bw()
-
-
-#######################################################################################################
-#######################################################################################################
-#######################################################################################################
-
-
-#####################################
-### CV - coefficient of variation ###
-#####################################
-
-# source: www.demogr.mpg.de/papers/technicalreports/tr-2012-002.pdf
-
-### 1. First step
-
-## assign new dx values (smoothed)
-
-dx.FUN <- function(x, smooth = FALSE, inter = FALSE){
-  
-  ### If smooth dx' are provided
-  if(smooth == TRUE){
-    
-    if(is.numeric(inter)){
-      
-      dxs <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
-      
-      x <- data.frame(Year = rep(x$Year,length(inter)), Age = inter)
-      
-      x$dx <- dx #* c(diff(inter),1)
-      
-    }else{
-      
-      dxs <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
-    }
-  }
-  
-  return(dxs)
-  
-}
-
-### 2. Second step - build the life tables on the "new" dx values
-## !!! For the indicators which require information on life expectancy
-
-CV.FUN <- function(x){
-  
-  # where x is the life table with the smoothed dx
-  
-  # Obtain the lx from the dxs
-  x$lx <- 1:length(x$Age)
-  x$lx[1] <- 1
-  for (i in 2:length(x$Age)) {
-    x$lx[i] <- x$lx[i - 1] - x$dxs[i - 1]
-  }
-  # Lx values
-  x$Lx <- x$lx - (0.5*x$dx)
-  # Tx values
-  x$Tx <- rev(cumsum(rev(x$Lx)))
-  # ex values
-  x$ex[x$Age] <- x$Tx[x$Age] / x$Lx[x$Age]
-  
-  # build from the SD and the life expectancy
-  
-  mean <- sum(x$Age * x$dx) / sum(x$dxs)
-  
-  sdev <- sqrt(sum((x$Age - mean)^2 * x$dxs) / sum(x$dxs))
-  
-  # coefficient of variance - CV
-  cv <- (sdev)/(x$Age + x$ex)
-  
-  return(CV)
-}
-
-
-
-#### apply ####
-
-# male
-data.ch.m <- readHMDweb(CNTRY = "CHE", item = "mltper_1x1", username = name.m, password = pw.m)
-data.ch.m <- data.ch.m[,c("Year","Age","dx")]
-
-# female
-data.ch.f <- readHMDweb(CNTRY = "CHE", item = "fltper_1x1", username = name.m, password = pw.m)
-data.ch.f <- data.ch.f[,c("Year","Age","dx")]
-
-### single year
-
-dxs.m.1990 <- dx.FUN(data.ch.m[data.ch.m$Year == 1990,], smooth = TRUE, inter = seq(0,110,0.1))
-
-### time series for males and females
-
-dxs.m <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = dx.FUN, smooth = TRUE, 
-            inter = seq(0,110,0.1))
-data.ch.f$dxs <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = dx.FUN, smooth = TRUE, 
-                    inter = seq(0,110,0.1))
-
-### Apply the CV function
-
-CV.CH.mal <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = CV.FUN, smooth = TRUE, 
-                inter = seq(0,110,0.1))
 
 
 #######################################################################################################
@@ -370,19 +223,44 @@ EDAG.FUN <- function(x, smooth = FALSE, inter = FALSE){
   }
   # computing e-dagger and Keyfitz' entropy based on Sholnikov/Andreev
   for(i in min(x$Age):max(x$Age)) {
-    e.dagger <- sum(x$dxs[x$Age==i]*1/2*(x$ex[x$Age==i]+x$ex[x$Age==i+1]))
-    # H <- e.dagger/x$ex[x$Age==0]
+    e.dagger <- sum(x$dx[x$Age==i]*1/2*(x$ex[x$Age==i]+x$ex[x$Age==i+1]))
   }
   return(e.dagger)
   
 }
 
 ### apply
+data1990 <- data %>% filter(Year==1990)
+
+for (g in seq(10,110,0.1)) {
+data1990$part.one[data1990$Age==g] <- data1990$dx[data1990$Age==g]*(data1990$ex[data1990$Age==g]+
+                                                                      data1990$ex[data1990$Age==g+0.1])
+}
+
+for (g in min(data1990$Age):max(data1990$Age)) {
+  e.dagr[g] <- (1/(2*lx[Age==g])) * cumsum()
+}
+
+
+
+
+
+data1990 %>% data1990 %>% mutate(part.one[Age] = dx[Age]*ex[Age+0.1]) %>% 
+  mutate(part.two)
+
+## Check diff - command
+x <- cumsum(cumsum(1:10))
+diff(x, lag = 2)
+
+
+
+cumsum(data1990$dx[data1990$Age==10]:data1990$dx[max(data1990$Age)])
+
 
 # single year
-EDAG.FUN(data.ch.m[data.ch.m$Year == 1990,], smooth = TRUE, inter = seq(0,110,0.1))
+EDAG.FUN(data[data$Year == 1990,], smooth = TRUE, inter = seq(0,110,0.1))
 
-for (i in 0:max(data.ch.f$Age)) {
+for (i in 10:max(data.ch.f$Age)) {
   ED.test <- sum(data.ch.f$dx[data.ch.f$Year==1990 & data.ch.f$Age==i])*1/2*(data.ch.f$ex)
 }
 

@@ -197,11 +197,16 @@ fem.smooth <- fem.smooth %>% bind_cols(h.new.Fem) %>%
  group_by(Year) %>% mutate(Tx = rev(cumsum(rev(Lx)))) %>% 
 ## Finally obtain the life expectancy from the Tx and lx
  group_by(Year) %>% mutate(ex = Tx / lx)
+
+## Little change of the variable name for age to allow for universal use
+ 
+ cbind(colnames(fem.smooth))
+ colnames(fem.smooth)[1] <- "Age"
       
 
  ## test plot - looks believable
  
- fem.smooth %>% filter(xs==10) %>% ggplot(aes(x=Year,y=ex)) +
+ fem.smooth %>% filter(Age==10) %>% ggplot(aes(x=Year,y=ex)) +
                     geom_line() +
                     scale_y_continuous(name = "ex at age 10") +
                     theme_bw()
@@ -343,10 +348,14 @@ mal.smooth <- mal.smooth %>% group_by(Year) %>% mutate(lx = c(lx[1],lx[1] * cump
   ## Finally obtain the life expectancy from the Tx and lx
   group_by(Year) %>% mutate(ex = Tx / lx)
 
+## Little change of the variable name for age to allow for universal use
+
+cbind(colnames(mal.smooth))
+colnames(mal.smooth)[1] <- "Age"
 
 ## test plot - looks believable
 
-mal.smooth %>% filter(xs==10) %>% ggplot(aes(x=Year,y=ex)) +
+mal.smooth %>% filter(Age==10) %>% ggplot(aes(x=Year,y=ex)) +
   geom_line() +
   scale_y_continuous(name = "ex at age 10") +
   theme_bw()
