@@ -104,12 +104,13 @@ sdfun <- function(x, smooth = FALSE, plot = FALSE, trun = 0, inter = FALSE){
 dump("sdfun", file = "sdfun.R")
 
 
-#### apply ####
+#### apply - test ####
 
 load("FLT_HMD.Rdata")
 
-data <- fem.smooth[,c("Year","Age","dx","lx","ex")]
+data <- fem.smooth[,c("Year","Age","dx","ax","lx","ex")]
 
+## Standard deviation above the mode
 sdfun(data[data$Year == 1900,], smooth = TRUE, plot = TRUE, trun = "mode", inter = seq(0,110,0.1))
 
 ### time series
@@ -132,7 +133,24 @@ plot(unique(data$Year), sd, type = "l", xlab = "", ylab = "sd", las = 1)
 
 ## Assuming the dx are smoothed in a previous step
 
-CV.FUN <- function(x){
+CV.FUN <- function(x, smooth=FALSE){
+  
+  ### Smoothing the values / or not
+  if(smooth == TRUE){
+    
+    if(is.numeric(inter)){
+      
+      dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
+      
+      x <- data.frame(Year = rep(x$Year,length(inter)), Age = inter)
+      
+      x$dx <- dx #* c(diff(inter),1)
+      
+    }else{
+      
+      x$dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
+      
+    }}
   
   mean <- sum(x$Age * x$dx) / sum(x$dx)
   
@@ -170,6 +188,24 @@ dump("CV.FUN", file="CV_FUN.R")
 ## Input: life table-data frame (more specific, dx values, x, and years)
 
 IQR.FUN <- function(x){
+  
+  ### Smoothing the values / or not
+  if(smooth == TRUE){
+    
+    if(is.numeric(inter)){
+      
+      dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
+      
+      x <- data.frame(Year = rep(x$Year,length(inter)), Age = inter)
+      
+      x$dx <- dx #* c(diff(inter),1)
+      
+    }else{
+      
+      x$dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
+      
+    }}
+  
     ### IQR function:
   x$rel.DX.CUM <- cumsum(x$dx)/max(cumsum(x$dx))
   Q1 <- x$Age[min(which(x$rel.DX.CUM>0.25))]
@@ -199,9 +235,9 @@ dump("IQR.FUN", file="IQR_FUN.R")
 ################
 
 ### ---------------------------------------------------------
-# formula based on: www.demogr.mpg.de/papers/technicalreports/tr-2012-002.pdf
-### alternative: (http://pages.stern.nyu.edu/~dbackus/BCH/demography/ZhangVaupel_ageseparating_DR_09.pdf)
-
+# formula based on: Shkolnikov et al. 2011 Losses in life expectancy in the USA
+# https://link.springer.com/article/10.1007%2Fs13524-011-0015-6
+### alternative continuous version: (http://pages.stern.nyu.edu/~dbackus/BCH/demography/ZhangVaupel_ageseparating_DR_09.pdf)
 
 EDAG.FUN <- function(x, smooth = FALSE, inter = FALSE){
   
@@ -221,141 +257,192 @@ EDAG.FUN <- function(x, smooth = FALSE, inter = FALSE){
       
     }
   }
-  # computing e-dagger and Keyfitz' entropy based on Sholnikov/Andreev
-  for(i in min(x$Age):max(x$Age)) {
-    e.dagger <- sum(x$dx[x$Age==i]*1/2*(x$ex[x$Age==i]+x$ex[x$Age==i+1]))
-  }
-  return(e.dagger)
+  # computing e-dagger 
+  
+  y <- last(x$Age)
+  part.one <- sum(x$dx[-y]*x$ex[-1])
+  part.two <- 1-(sum(x$dx[-y]*x$ax[-y]))
+  edagger <- part.one + part.two
+  #H <- edagger/x$ex[1]
+  return(edagger)
   
 }
 
-### apply
-data1990 <- data %>% filter(Year==1990)
-
-for (g in seq(10,110,0.1)) {
-data1990$part.one[data1990$Age==g] <- data1990$dx[data1990$Age==g]*(data1990$ex[data1990$Age==g]+
-                                                                      data1990$ex[data1990$Age==g+0.1])
-}
-
-for (g in min(data1990$Age):max(data1990$Age)) {
-  e.dagr[g] <- (1/(2*lx[Age==g])) * cumsum()
-}
+### save e+ - function
+dump("EDAG.FUN", file="EDAG_FUN.R")
 
 
+### apply test
+data1990 <- data %>% filter(Year==2005)
+edag1990 <- EDAG.FUN(data1990, smooth = TRUE)
 
 
-
-data1990 %>% data1990 %>% mutate(part.one[Age] = dx[Age]*ex[Age+0.1]) %>% 
-  mutate(part.two)
-
-## Check diff - command
-x <- cumsum(cumsum(1:10))
-diff(x, lag = 2)
+## e+(10) is much higher than it would be due to missing infant and child mortality
+## might have to re-run it with life tables which start at age 0
 
 
-
-cumsum(data1990$dx[data1990$Age==10]:data1990$dx[max(data1990$Age)])
-
-
-# single year
-EDAG.FUN(data[data$Year == 1990,], smooth = TRUE, inter = seq(0,110,0.1))
-
-for (i in 10:max(data.ch.f$Age)) {
-  ED.test <- sum(data.ch.f$dx[data.ch.f$Year==1990 & data.ch.f$Age==i])*1/2*(data.ch.f$ex)
-}
+##################################################################################
+##################################################################################
+##################################################################################
 
 
+#######################################
+### Modal Age at death above age 10 ###
+#######################################
 
-### time series for males and females
+## Calculate the mode over the the dx after age 5 - here age 10 by default
+## based on Canudas-Romo 2010: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3000019/) - Appendix A (formula A2)
 
-EDAG.CH.M <- by(data = data.ch.m, INDICES = data.ch.m$Year, FUN = IQR.FUN, smooth = TRUE, 
-                inter = seq(0,110,0.1))
-EDAG.CH.F <- by(data = data.ch.f, INDICES = data.ch.f$Year, FUN = IQR.FUN, smooth = TRUE, 
-                inter = seq(0,110,0.1))
-
-
-# creating a new data frame for easier plotting and handling the summarized values 
-e.d.fem <- as.data.frame(unique(females$Year))
-colnames(e.d.fem)[1] <- "Year"
-e.d.fem <- e.d.fem %>% mutate(edagger=NA)
-# for now with a for loop
-for (i in 1876:2014) {
-  e.d.fem$edagger[e.d.fem$Year==i] <- e.dagger.fun(subset(females,Year==i & Age<95))
-}
-
-## E-dagger plot (reasonable)
-e.d.fem %>% ggplot(aes(x=Year, y=edagger))+ 
-  geom_point() +
-  scale_y_continuous(name = "e+ in years") +
-  theme_bw()
-
-
-# dplyr version (to be finished)
-
-# EDAG <- females %>% group_by(Year) %>% summarise(edagger = sum(dxs[Age]*1/2*(ex[Age]+ex[Age+1])))
-
-
-#######################
-### Keyfitz entropy ###
-#######################
-
-e.d.fem$ex <- females$exs[females$Age==0]
-e.d.fem$H <- e.d.fem$edagger/e.d.fem$ex
-
-e.d.fem %>% ggplot(aes(x=Year, y=H))+ 
-  geom_point() +
-  scale_y_continuous(name = "Keyfitz' LT Entropy") +
-  theme_bw()
-
-
-
-##########################################
-### From Modal Age at death to the SD+ ###
-##########################################
-
-## Calculate the mode over the the dx after age 5 (based on Canudas-Romo 2010)
-## https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3000019/) - Appendix A (formula A2)
+## and Kannisto (2001) - Mode and Dispersion of the Length of Life
+## http://www.jstor.org/stable/3030264
 
 ## Function to calculate the mode (after age 5) 
 #  x is the age with the highest number of deaths in the life table at the time
 MDA.fun <- function(lt) {
-  x <- lt$Age[which.max(lt$dxs)]
-  M <- x + ((lt$dxs[x]-lt$dxs[x-1])/(lt$dxs[x]-lt$dxs[x-1])+(lt$dxs[x]-lt$dxs[x+1]))
+  x <- lt$Age[which.max(lt$dx)]
+  M <- x + ((lt$dx[x]-lt$dx[x-1])/(lt$dx[x]-lt$dx[x-1])+(lt$dx[x]-lt$dx[x+1]))
   return(M)
 }
 
+dump("MDA.fun","MA5_FUN.R")
 
-# test <- MDA.fun(subset(females,Year==1960 & Age>5))
-# test 
-# Seems to work fine with different years
+# test
+test <- MDA.fun(subset(fem.smooth,Year==1960))
 
-# for each year - give me the age after 5 where the most deaths occur
-# the not so elegant way for now:
-mdsd.fem <- as.data.frame(unique(females$Year))
-colnames(mdsd.fem)[1] <- "Year"
-mdsd.fem <- mdsd.fem %>% mutate(M=NA)
 
-for (j in 1876:2014) {
-  mdsd.fem$M[mdsd.fem$Year==j] <- MDA.fun(subset(females, Year==j & Age>5))
+
+#### %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#### !!!!!!!!!!!!!!!!!!!!!!! Every below this is a Test range
+
+
+
+## attempt to copy Cheung et al. 2009
+SD.plus.FUN <- function(x, smooth = FALSE, inter = FALSE){
+  
+  ### If smooth dx' are provided
+  if(smooth == TRUE){
+    
+    if(is.numeric(inter)){
+      
+      dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)), x = inter)$y
+      
+      x <- data.frame(Year = rep(x$Year,length(inter)), Age = inter)
+      
+      x$dx <- dx #* c(diff(inter),1)
+    }else{
+      
+      x$dx <- predict(smooth.spline(x = x$Age, y = x$dx, control.spar = list(low = 0.3, high = 1)))$y
+      
+    }
+  }
+# function by Cheung et al.
+  a <- x$Age[which.max(x$dx)]
+  M <- a + ((x$dx[a]-x$dx[a-1])/(x$dx[a]-x$dx[a-1])+(x$dx[a]-x$dx[a+1]))
+  b <- seq(ceiling(M),last(x$Age),0.1)
+  part.one <- c(rep(0,length(b)))
+  
+  ## for loop (for now)
+  for (k in b) {
+    part.one <- (sum(b[k]-M))^2/length(b) 
+    }
+  SD.plus <- sqrt(part.one)
+  ### !!! For comparison with other estimates - IF decimal ages are used
+  SD.plus <- SD.plus*10
+  return(SD.plus)
 }
 
-summary(mdsd.fem)
+dump("SD.plus.FUN","Cheung_FUN.R")
 
-### Plot
-
-mdsd.fem %>% ggplot(aes(x=Year, y=M)) +
-  geom_point() +
-  scale_x_continuous(name="year") + 
-  scale_y_continuous(name="modal age at death (after age 5)") +
-  theme_bw()
+# test
+test.dos <- SD.plus.FUN(subset(fem.smooth,Year==1995), smooth = TRUE)
 
 
+td <- subset(mal.smooth,Year==1950)
 
-## dplyr - version Calculate the modal age at death after age 5 by year
-#  fem.test <- females %>% filter(Age>5) %>% group_by(Year) %>% 
-#   dplyr::summarise(MDA = MDA.fun(lt))
+a <- td$Age[which.max(td$dx)]
+M <- a + ((td$dx[a]-td$dx[a-1])/(td$dx[a]-td$dx[a-1])+(td$dx[a]-td$dx[a+1]))
+b <- seq(ceiling(M),last(td$Age),0.1)
+part.uno <- c(rep(0,length(b)))
 
-############################
-#### "source" functions ####
-############################
+for (k in b) {
+  part.uno <- ((sum(b[k]-M))^2)/(length(b))            # length of the age interval above (not very elegant)
+}
+
+
+SD.plus <- sqrt(part.uno)*10
+
+  
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################  
+
+########################
+### GINI Coefficient ###
+########################
+
+## based on MPIDR working paper by Shkolnikov/Andreev (2010)
+## http://www.demogr.mpg.de/papers/technicalreports/tr-2010-001.pdf
+## or alternatively: Shkolnikov et al 2003: https://www.demographic-research.org/volumes/vol8/11/8-11.pdf
+
+
+GINI.FUN <- function(x){
+  # F(x) - share of the life table population
+  # Omega(x) - cumulative share
+  y <- last(x$Age)
+  
+  x$Fx <- c(rep(0,length(x$Age[-1])),1)
+  for (i in 2:length(x$Age[-1])){
+    x$Fx[i] <- 1-(x$lx[i+1]/x$lx[1])
+  }
+  
+  x$Omega <- c(rep(0,length(x$Age[-1])),1)
+  for (m in 2:length(x$Age[-1])){
+    x$Omega[m] <- sum(head(x$dx,m)*x$Age[m])/sum(x$dx*y)
+  }
+  x$GINI = c(rep(0,length(x$Age)))
+  for (q in 1:length(x$Age[-1])){
+    x$GINI[q] <- 1 - (sum((x$Fx[q+1]-x$Fx[q])*(x$Omega[q+1]+x$Omega[q])))
+  }
+  return(GINI)
+}
+
+
+
+### apply test
+data1990 <- data %>% filter(Year==1880)
+gini1990 <- GINI.FUN(data1990)
+
+data1990$Fx <- c(rep(0,length(data1990$Age[-1])),1)
+for (i in 2:length(data1990$Age[-1])){
+  data1990$Fx[i] <- 1-(data1990$lx[i+1]/data1990$lx[1])
+}
+
+data1990$Omega <- c(rep(0,length(data1990$Age[-1])),1)
+for (m in 2:length(data1990$Age[-1])){
+  data1990$Omega[m] <- sum(head(data1990$dx,m)*data1990$Age[m])/sum(data1990$dx*y)
+}
+
+### Lorenz Curve
+plot(x=data1990$Fx,y=data1990$Omega, type = "l")
+abline(a = 0, b = 1, col = 2)
+
+
+# Discrete GINI
+
+part.uno <- 1-(1/(data1990$ex * data1990$lx))
+part.dos <- c(rep(1,length(data1990$Age)))
+for (h in 2:length(data1990$Age[-1])) {
+  part.dos[h] <- sum(((data1990$lx[h-1])^2 + data1990$ax[h] * ((data1990$lx[h])^2 - data1990$lx[h-1])^2))
+}
+
+GINI1990 <- part.uno * part.dos
+
+# continuous GINI
+data1990$GINI = c(rep(1,length(data1990$Age)))
+for (q in 2:length(data1990$Age[-1])){
+  data1990$GINI[q] <- 1 - (sum((data1990$Fx[q+1]-data1990$Fx[q]))*(data1990$Omega[q+1]+data1990$Omega[q]))
+}
+
 
