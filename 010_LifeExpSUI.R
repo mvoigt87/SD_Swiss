@@ -1,6 +1,6 @@
-### Spanish Aggregated Data ###
+
 ### ------------------------------------------------------------------ ###
-###  General Descriptive and aggregated measures for the Dissertation  ###
+###  Life expectancy differences - data and plots for NDS 2019         ###
 ### ------------------------------------------------------------------ ###
 
 # set working directory
@@ -45,10 +45,9 @@ LT.SUI.mal <- readHMD("LT_SUI_mal.txt", fixup = T)
 ### 2. Binding the data together and show development for LE 0 and LE 65
 
 #### Age 0
-#### -----
+
 
 ## Females
-
 LT_SUI_0_FEM <- LT.SUI.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% 
   # subset only for the ex at birth (changeable)
   filter(Age == 0) %>% 
@@ -58,7 +57,6 @@ LT_SUI_0_FEM <- LT.SUI.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>
   select(-Age)
 
 ## Males
-
 LT_SUI_0_MAL <- LT.SUI.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% 
   # subset only for the ex at birth (changeable)
   filter(Age == 0) %>% 
@@ -72,39 +70,30 @@ LT_SUI_0_MAL <- LT.SUI.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>%
 
 LE_0 <- bind_rows(LT_SUI_0_FEM,LT_SUI_0_MAL)
   ## Cut to a uniform age range
-  # filter(Year>1910) %>% 
+  #filter(Year>1950) #%>% 
   # highlight Spanish values
   # mutate(highlight_flag = ifelse(country=="Spain",T,F))
-
-head(LE_0)
-tail(LE_0)
 summary(LE_0)
 
 ### ------------------------------------------------------------------------------------------------- ###
-### ------------------------------------------------------------------------------------------------- ###
-### ------------------------------------------------------------------------------------------------- ###
-
 
 #### Age 65
-#### ------
 
 ## Females
-
 LT_SUI_65_FEM <- LT.SUI.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% 
   # subset only for the ex at birth (changeable)
   filter(Age == 65) %>% 
   # to assure the same end year (2012)
-  #filter(Year < 2013) %>% 
+  filter(Year > 1950) # %>% 
   # age won't be needed
   select(-Age)
 
 ## Males
-
 LT_SUI_65_MAL <- LT.SUI.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% 
   # subset only for the ex at birth (changeable)
   filter(Age == 65) %>% 
   # to assure the same end year (2012)
-  # filter(Year < 2013) %>% 
+  filter(Year > 1950) # %>% 
   # age won't be needed
   select(-Age)
 
@@ -115,7 +104,7 @@ LE_65 <- bind_rows(LT_SUI_65_FEM,LT_SUI_65_MAL)
 
 
 
-# rm(LT.ESP.0, LT.ITA.0, LT.GRC.0, LT.PRT.0, LT.JAP.0, LT.ESP.65, LT.ITA.65, LT.GRC.65, LT.PRT.65, LT.JAP.65)
+ rm(LT_SUI_65_FEM, LT_SUI_65_MAL)
 
 ### 3. Plot (using multiplot)
 
@@ -162,10 +151,6 @@ plotLE_65 <- plotLE_65 + theme(legend.position = c(0.85, 0.25)) +
   scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
                                            axis.title=element_text(size=12,face="bold"))
 
-### Multiplot ###
-# 1. load the function! - and change the layout matrix settings in the first row
-# 2. use it for the two LE plots
-multiplot(plotLE_zero,plotLE_65)
 
 
 ### ------------------------------------------------ ###
@@ -192,14 +177,14 @@ for (i in min(LT.SUI.fem$Year):max(LT.SUI.fem$Year)) {
 # Life Expectancy at age 65
 plotgap<- Gap_SUI %>% ggplot() +
   # line plot
-  geom_line(aes(x = Year, y = ex, color = sex))  +
-  geom_point(aes(x = Year, y = ex, color = sex)) +
-  scale_y_continuous(name = "Life expectancy at age 65") +
+  geom_line(aes(x = year, y = gap, color="#FF6600"))  +
+  geom_point(aes(x = year, y = gap, color="#FF6600")) +
+  scale_y_continuous(name = "Female-Male Gap in LE") +
   scale_x_continuous(name = " ") +
-  scale_colour_manual(values = c("#FF6600","#0D3BB2"), name="", guide=F) +
+  scale_colour_manual(values = c("#FF6600"), name="", guide=F) +
   #scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
   theme_bw()
 
-plotLE_65 <- plotLE_65 + theme(legend.position = c(0.85, 0.25)) + 
+plotgap <- plotgap + theme(legend.position = c(0.85, 0.25)) + 
   scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
                                             axis.title=element_text(size=12,face="bold"))

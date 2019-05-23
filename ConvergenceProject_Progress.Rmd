@@ -1,0 +1,259 @@
+---
+title: "Is between-sex convergence also happening in lifespan disparity?"
+output: word_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+# set working directory
+dir()
+setwd("C:/Users/y4956294S/Documents/Workshops and Conferences/Demographic Symposium Iceland 2019/data")
+
+set.seed(17952)
+# LIBRARIES #
+library(ggplot2)
+library(gcookbook)
+library(HMDHFDplus)
+library(plyr)
+library(reshape2)
+library(grid)
+library(gridExtra)
+library(tidyverse)
+library(readxl)
+library(scales)
+library(RColorBrewer)
+library(MortalitySmooth)
+library(latex2exp)
+# Life tables
+LT.SUI.fem <- readHMD("LT_SUI_fem.txt", fixup = T)
+LT.SUI.mal <- readHMD("LT_SUI_mal.txt", fixup = T)
+# Extract life expectancy at birth
+## Females
+LT_SUI_0_FEM <- LT.SUI.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == 0) %>% 
+  # to assure the same end year (2012)
+  #filter(Year < 2013) %>% 
+  # age won't be needed
+  select(-Age)
+## Males
+LT_SUI_0_MAL <- LT.SUI.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == 0) %>% 
+  # to assure the same end year (2012)
+  # filter(Year < 2013) %>% 
+  # age won't be needed
+  select(-Age)
+## Create a long dataset with all the countries for ggplot
+LE_0 <- bind_rows(LT_SUI_0_FEM,LT_SUI_0_MAL)
+#### Same for age 65
+## Females
+LT_SUI_65_FEM <- LT.SUI.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == 65) %>% 
+  # to assure the same end year (2012)
+  filter(Year > 1950)  %>% 
+  # age won't be needed
+  select(-Age)
+## Males
+LT_SUI_65_MAL <- LT.SUI.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == 65) %>% 
+  # to assure the same end year (2012)
+  filter(Year > 1950)  %>% 
+  # age won't be needed
+  select(-Age)
+## Create a long dataset with all the countries
+LE_65 <- bind_rows(LT_SUI_65_FEM,LT_SUI_65_MAL)
+```
+
+I was looking for an easy way to share our progress, make commenting easier and keep up with each other. I thought a shared markdown/word document may be a good start. Please, feel free to edit the word document.
+
+# Theoretical background
+To allow the project to unfold and eventually become a paper, I thought we should narrow down our research question a little bit and try to theoretically explain why we are doing what we are doing. I hope this is helpful to not lose track and keep it manageable.
+
+## The opening and closing of the sex-specific life expectancy gap
+The first (and arguably the most important) theoretical branch is the story of the opening and closing sex gap in terms of life expectancy at birth. There is a large body of research devoted to that topic which still should not be too hard to summarize. I have some material about this which may need to be updated. In short, the male and female life expectancy trends diverged around the 1950-60 due to faster increasing female life expectancy. Since the 1980s-90s we observe a convergence in many populations driven by faster increasing male life expectancy. This the timing and magnitude of this development varies by country/society but the opening and closing around this time appears to be an universal phenomenon.
+
+The fascinating thing is that it cannot necessarily be traced back to a single cause even if the genderspecific differences in the uptake of smoking appears to be the most common explanantion. But there are also other traits that highlight the effect of changes in accident mortality due to changing social roles, changes in the labor market structure etc. There is some literature on general behavioral difference and how they may affect mortality. On work I can think of the top of my head 
+Then there is an interesting explanation looking at cohort mortality and highlighting the role of the cohorts exposed to the first and second world war. Less so for WW2, but there are these selection theories that especially healthy men were scarred or died on the killing fields and never had the potential to grow to the oldest ages. I think Graziela Caselli was a proponent of the idea that once these cohorts die of, sex difference will be much smaller. May be interesting to look at the magnitude between Switzerland and countries that were involved in the wars.
+
+Other ideas:
+
+## The relationship between life expectancy and lifespan disparity
+There is some work by the groups around Jim Vaupel (Rostock, Odense). The general idea is that the two concepts are closely related in the sense that if life expectancy is continuing to rise, it is most likely that the disparity of lifespans will decrease. There is still a second possibilty that the average age at death (or the old age modal age) will be postponed.
+Here I am not so sure, how far the field is with proving the relationship for different contexts. In the modern aging societies the negative association between the two may hold, but I am not sure about other contexts.
+
+## Epidemiological transition
+The third "bigger" theoretical link is, in my opinion, the relationship between the development of morbidity patterns represented through causes of death and age-specific mortality patterns. In general, we are interested in how these patterns differ between males and females and how they have affected lifespan disparity over time. 
+Please, correct me on this one.
+
+# Measures and data
+## HMD data for life table measures
+There is not much to say to this point. I simply downloaded 1 year by 1 year life tables from the HMD website.
+
+## Our function for calculating e-dagger (lifespan disparity)
+$e^\dagger$ can be interpreted as life expectancy lost due to death, similar to the concept of Potential Life Years Lost. That is the code for the formula. (Note: HMD life tables use 100000 as life table radix and the formula was written for $l_0$=1)
+```{r edagger}
+EDAG.FUN <- function(x, trun = 0){
+
+  if(is.numeric(trun)){
+
+    x <- x[x$Age >= trun,]
+
+  }else{
+
+    mode <- MDA.fun(x)
+
+    x <- x[x$Age >= mode,]
+
+  }
+
+  # computing e-dagger
+
+  y <- last(x$Age)
+  part.one <- sum(x$dx[-y]*x$ex[-1])
+  part.two <- 1-(sum(x$dx[-y]*x$ax[-y]))
+  edagger <- part.one + part.two
+  #H <- edagger/x$ex[1]
+  return(edagger)
+
+}
+```
+
+## Preliminary Results
+
+I had some time to download the HMD data and update our code a little bit. I plan to include further countries tomorrow (24.05.), but so far this is the development for Switzerland.
+
+## Sex-specific life expectancy development
+$e_0$ and $e_65$ for Swiss men and women. The second plot is reduced to the time that we have CoD data for.
+
+```{r LE, echo=FALSE, fig.height = 6, fig.width = 10}
+# Life Expectancy at age zero
+plotLE_zero <- LE_0 %>% ggplot() +
+  # line plot
+  geom_line(aes(x = Year, y = ex, color = sex))  +
+  geom_point(aes(x = Year, y = ex, color = sex )) +
+  scale_y_continuous(name = "Life expectancy at birth") +
+  scale_x_continuous(name = " ") +
+  scale_colour_manual(values = c("#FF6600","#0D3BB2"), name="", guide=F) +
+#  scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  theme_bw()
+plotLE_zero <- plotLE_zero + theme(axis.text=element_text(size=12),
+                   axis.title=element_text(size=12,face="bold"))
+plotLE_zero
+
+# Life Expectancy at age 65
+plotLE_65 <- LE_65 %>% ggplot() +
+  # line plot
+  geom_line(aes(x = Year, y = ex, color = sex))  +
+  geom_point(aes(x = Year, y = ex, color = sex)) +
+  scale_y_continuous(name = "Life expectancy at age 65") +
+  scale_x_continuous(name = " ") +
+  scale_colour_manual(values = c("#FF6600","#0D3BB2"), name="", guide=F) +
+  #scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  theme_bw()
+
+plotLE_65 <- plotLE_65 + theme(legend.position = c(0.85, 0.25)) + 
+  scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
+                                           axis.title=element_text(size=12,face="bold"))
+
+plotLE_65
+```
+
+And in the following one, to make it better visible is the gap in life expectancy (female $e_0$ - male $e_0$). We could overlay different countries to see if and when the gaps have closed throughout Europe.
+
+```{r Gap0, echo=FALSE, warning=FALSE, fig.height = 6, fig.width = 10}
+## Calculating the gender gap in LE over time (x-female LE, y-male LE)
+GAP <- function (x,y) {
+  z <- x-y
+  return (z)
+}
+
+# Suisse
+Gap_SUI <- as.data.frame(cbind(rep(NA,140), seq(1876,2016,1)))
+names(Gap_SUI) <- c("gap","year")
+
+for (i in min(LT.SUI.fem$Year):max(LT.SUI.fem$Year)) {
+  Gap_SUI$gap[Gap_SUI$year==i] <- GAP(LT.SUI.fem$ex[LT.SUI.fem$Year==i],LT.SUI.mal$ex[LT.SUI.mal$Year==i])
+}
+
+### -------------------------------------------------- ###
+
+# Plot the gap at the 2 time points
+
+# Life Expectancy at age 65
+plotgap<- Gap_SUI %>% ggplot() +
+  # line plot
+  geom_line(aes(x = year, y = gap, color="#FF6600"))  +
+  geom_point(aes(x = year, y = gap, color="#FF6600")) +
+  scale_y_continuous(name = "Female-Male Gap in LE") +
+  scale_x_continuous(name = " ") +
+  scale_colour_manual(values = c("#FF6600"), name="", guide=F) +
+  #scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  theme_bw()
+
+plotgap <- plotgap + theme(legend.position = c(0.85, 0.25)) + 
+  scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
+                                            axis.title=element_text(size=12,face="bold"))
+plotgap
+```
+
+## Life span disparity
+For now, again only Switzerland. I calculated the $e^\dagger$ with above-shown formula and then divided results by the HMD radix which made them comparable to other presentations of the measure. The second graph again shows the gap between male and female values. In this case, I substracted the female from the male values to obtain positive values (other way around for $e_0$).
+
+```{r lifespanDis, echo=FALSE, warning=FALSE, fig.height = 6, fig.width = 10}
+  # females (up to age 100)
+  LT.SUI.fem <- LT.SUI.fem %>% filter(Age<=100)
+  # female
+  ED_FEM_SUI <- by(data = LT.SUI.fem, INDICES = LT.SUI.fem$Year, FUN = EDAG.FUN)
+  # This step is necessary because our formula is based on l_0 = 1 and the HMD standard l_0 = 100000
+  ED_FEM_SUI <- ED_FEM_SUI/100000
+    # males
+  LT.SUI.mal <- LT.SUI.mal %>% filter(Age<=100)
+  ED_MAL_SUI <- by(data = LT.SUI.mal, INDICES = LT.SUI.mal$Year, FUN = EDAG.FUN)
+  # This step is necessary because our formula is based on l_0 = 1 and the HMD standard l_0 = 100000
+  ED_MAL_SUI <- ED_MAL_SUI/100000
+  
+   edag_both_SUI <- as.data.frame(cbind(unique(LT.SUI.fem$Year),ED_FEM_SUI, ED_MAL_SUI))
+  
+  colnames(edag_both_SUI)[1] <- "Year"
+  
+  # plot edagger Switzerland
+  edag_both_plot <- edag_both_SUI %>% ggplot(aes(x=Year)) +
+    geom_line(aes(y = ED_MAL_SUI, color="Male")) + 
+    geom_line(aes(y = ED_FEM_SUI, color="Female")) +
+    scale_y_continuous(name = TeX('$e^\\dagger$')) +
+    scale_color_manual(name=" ", values = c("#FF6600","#0D3BB2"), guide=F) +
+    theme_bw()
+  
+  edag_both_plot <- edag_both_plot + theme(axis.text=element_text(size=12),
+                                           axis.title=element_text(size=12,face="bold"))
+  edag_both_plot
+  
+  # Suisse
+Gap_SUI_LSD <- as.data.frame(cbind(rep(NA,140), seq(1876,2016,1)))
+names(Gap_SUI_LSD) <- c("gap","year")
+
+for (i in min(LT.SUI.fem$Year):max(LT.SUI.fem$Year)) {
+  Gap_SUI_LSD$gap[Gap_SUI_LSD$year==i] <- GAP(edag_both_SUI$ED_MAL_SUI[edag_both_SUI$Year==i],edag_both_SUI$ED_FEM_SUI[edag_both_SUI$Year==i])
+}
+
+# Plot GAP
+plotgap_LSD <- Gap_SUI_LSD %>% ggplot() +
+  # line plot
+  geom_line(aes(x = year, y = gap, color="#FF6600"))  +
+  geom_point(aes(x = year, y = gap, color="#FF6600")) +
+  scale_y_continuous(name = "Male-Female Gap in LSD") +
+  scale_x_continuous(name = " ") +
+  scale_colour_manual(values = c("#FF6600"), name="", guide=F) +
+  #scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  theme_bw()
+
+plotgap_LSD <- plotgap_LSD + theme(legend.position = c(0.85, 0.25)) + 
+  scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
+                                            axis.title=element_text(size=12,face="bold"))
+
+plotgap_LSD
+```
+
+Note: to see the effect of possible cohort effects, I may produce some mortality surfaces. Also, I am sure there is a better way to calculate the difference between two time series of values but the toy example for the GAP function worked for now.

@@ -1,4 +1,4 @@
-EDAG.F <-
+EDAG.FUN <-
 function(x){
 y <- last(x$Age)
 a <- first(x$Age)
