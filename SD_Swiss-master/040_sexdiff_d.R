@@ -14,14 +14,6 @@ library(MortHump)
 
 set.seed(17952)
 
-### 0.1 hmd
-  # name.m <- "mathias.voigt4@uni-rostock.de"
-  # pw.m <- "1320270854"
-  # 
-  # ## 0.2 obtain single year life tables from the HMD
-  # SUI_fem <- readHMDweb(CNTRY="CHE", item="fltper_1x1", username=name.m, password=pw.m, fixup = T)
-  # SUI_mal <- readHMDweb(CNTRY="CHE", item="mltper_1x1", username=name.m, password=pw.m, fixup = T)
-
 ### load smoothed (interpolated) life tables (decimal ages, source: HMD)
 
 load("FLT_HMD.Rdata")
@@ -33,9 +25,9 @@ data.m <- mal.smooth[,c("Year","Age","dx","ax","lx","ex")]
 
 
 ### load function for life span disparity
-source("MA5_FUN.R")
-source("sdfun.R")
-source("Cheung_FUN.R")
+# source("MA5_FUN.R")
+# source("sdfun.R")
+# source("Cheung_FUN.R")
 source("IQR_FUN.R")
 source("CV_FUN.R")
 source("EDAG_FUN.R")

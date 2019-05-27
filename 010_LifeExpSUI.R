@@ -38,85 +38,167 @@ library(MortalitySmooth)
 LT.SUI.fem <- readHMD("LT_SUI_fem.txt", fixup = T)
 LT.SUI.mal <- readHMD("LT_SUI_mal.txt", fixup = T)
 
+# France
+
+LT.FRA.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/FRACNP.fltper_1x1.txt", fixup = T)
+LT.FRA.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/FRACNP.mltper_1x1.txt", fixup = T)
+
+
+# Spain
+
+LT.ESP.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/ESP.fltper_1x1.txt", fixup = T)
+LT.ESP.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/ESP.mltper_1x1.txt", fixup = T)
+
+
+# Denmark
+
+LT.DEN.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/DNK.fltper_1x1.txt", fixup = T)
+LT.DEN.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/DNK.mltper_1x1.txt", fixup = T)
+
+
+# Poland
+
+LT.POL.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/POL.fltper_1x1.txt", fixup = T)
+LT.POL.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/POL.mltper_1x1.txt", fixup = T)
+
+# RUS
+
+LT.RUS.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/RUS.fltper_1x1.txt", fixup = T)
+LT.RUS.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/RUS.mltper_1x1.txt", fixup = T)
+
 ### ------------------------------------------------------------------------------------------------- ###
 ### ------------------------------------------------------------------------------------------------- ###
 ### ------------------------------------------------------------------------------------------------- ###
 
 ### 2. Binding the data together and show development for LE 0 and LE 65
 
+###########
 #### Age 0
+###########
 
-
-## Females
-LT_SUI_0_FEM <- LT.SUI.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% 
+## Females - SUI
+LT_SUI_FEM <- LT.SUI.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "SUI") %>% 
   # subset only for the ex at birth (changeable)
-  filter(Age == 0) %>% 
+  filter(Age == c(0,65)) %>% 
   # to assure the same end year (2012)
-  #filter(Year < 2013) %>% 
-  # age won't be needed
-  select(-Age)
+  filter(Year >= 1960) 
+ 
+
+## Females - FRA
+LT_FRA_FEM <- LT.FRA.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "FRA") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+## Females - ESP
+LT_ESP_FEM <- LT.ESP.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "ESP") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+## Females - DEN
+LT_DEN_FEM <- LT.DEN.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "DEN") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+## Females - POL
+LT_POL_FEM <- LT.POL.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "POL") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+
+## Females - RUS
+LT_RUS_FEM <- LT.RUS.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "RUS") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+
 
 ## Males
-LT_SUI_0_MAL <- LT.SUI.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% 
+########
+
+## SUI
+LT_SUI_MAL <- LT.SUI.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "SUI") %>% 
   # subset only for the ex at birth (changeable)
-  filter(Age == 0) %>% 
+  filter(Age == c(0,65)) %>% 
   # to assure the same end year (2012)
-  # filter(Year < 2013) %>% 
-  # age won't be needed
-  select(-Age)
+  filter(Year >= 1960) 
+
+
+## FRA
+LT_FRA_MAL <- LT.FRA.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "FRA") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+## ESP
+LT_ESP_MAL <- LT.ESP.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "ESP") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+## Females - DEN
+LT_DEN_MAL <- LT.DEN.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "DEN") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+## POL
+LT_POL_MAL <- LT.POL.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "POL") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
+
+
+## RUS
+LT_RUS_MAL <- LT.RUS.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "RUS") %>% 
+  # subset only for the ex at birth (changeable)
+  filter(Age == c(0,65)) %>% 
+  # to assure the same end year (2012)
+  filter(Year >= 1960)
 
 
 ## Create a long dataset with all the countries
 
-LE_0 <- bind_rows(LT_SUI_0_FEM,LT_SUI_0_MAL)
+LE <- bind_rows(LT_SUI_FEM,LT_SUI_MAL,LT_DEN_FEM,LT_DEN_MAL,LT_ESP_FEM,LT_ESP_MAL,LT_FRA_FEM,LT_FRA_MAL,
+                LT_POL_FEM, LT_POL_MAL, LT_RUS_FEM, LT_RUS_MAL) %>% 
   ## Cut to a uniform age range
   #filter(Year>1950) #%>% 
   # highlight Spanish values
-  # mutate(highlight_flag = ifelse(country=="Spain",T,F))
-summary(LE_0)
+  mutate(highlight_flag = ifelse(cntry=="SUI",T,F))
+
+# For plotting
+LE$sex <- as.factor(LE$sex)
+LE$cntry <- as.factor(LE$cntry)
+
+summary(LE)
 
 ### ------------------------------------------------------------------------------------------------- ###
-
-#### Age 65
-
-## Females
-LT_SUI_65_FEM <- LT.SUI.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% 
-  # subset only for the ex at birth (changeable)
-  filter(Age == 65) %>% 
-  # to assure the same end year (2012)
-  filter(Year > 1950) # %>% 
-  # age won't be needed
-  select(-Age)
-
-## Males
-LT_SUI_65_MAL <- LT.SUI.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% 
-  # subset only for the ex at birth (changeable)
-  filter(Age == 65) %>% 
-  # to assure the same end year (2012)
-  filter(Year > 1950) # %>% 
-  # age won't be needed
-  select(-Age)
-
-
-## Create a long dataset with all the countries
-
-LE_65 <- bind_rows(LT_SUI_65_FEM,LT_SUI_65_MAL)
-
-
-
- rm(LT_SUI_65_FEM, LT_SUI_65_MAL)
-
 ### 3. Plot (using multiplot)
+### ------------------------------------------------------------------------------------------------- ###
 
 # Life Expectancy at age zero
-plotLE_zero <- LE_0 %>% ggplot() +
+plotLE_zero <- LE %>% filter(Age==0) %>% ggplot() +
   # line plot
-  geom_line(aes(x = Year, y = ex, color = sex))  +
-  geom_point(aes(x = Year, y = ex, color = sex )) +
+  geom_line(aes(x = Year, y = ex, color = cntry, alpha = highlight_flag))  +
+  geom_point(aes(x = Year, y = ex, color = cntry, alpha = highlight_flag )) +
   scale_y_continuous(name = "Life expectancy at birth") +
   scale_x_continuous(name = " ") +
-  scale_colour_manual(values = c("#FF6600","#0D3BB2"), name="", guide=F) +
-#  scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  scale_colour_manual(values = c("#26B7FF","#26FF57", "#FFD846","#FF6600","#0D3BB2","#FF6934"), name="") +
+  scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  facet_wrap(~ sex) +
   theme_bw()
 plotLE_zero <- plotLE_zero + theme(axis.text=element_text(size=12),
                    axis.title=element_text(size=12,face="bold"))
@@ -137,24 +219,64 @@ plotLE_zero <- plotLE_zero + theme(axis.text=element_text(size=12),
 # ----------------------------------------------------------------------------------- #
 
 # Life Expectancy at age 65
-plotLE_65 <- LE_65 %>% ggplot() +
+
+plotLE_65 <- LE %>% filter(Age==65) %>% ggplot() +
   # line plot
-  geom_line(aes(x = Year, y = ex, color = sex))  +
-  geom_point(aes(x = Year, y = ex, color = sex)) +
-  scale_y_continuous(name = "Life expectancy at age 65") +
+  geom_line(aes(x = Year, y = ex, color = cntry, alpha = highlight_flag))  +
+  geom_point(aes(x = Year, y = ex, color = cntry, alpha = highlight_flag )) +
+  scale_y_continuous(name = "Life expectancy at Age 65") +
   scale_x_continuous(name = " ") +
-  scale_colour_manual(values = c("#FF6600","#0D3BB2"), name="", guide=F) +
-  #scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  scale_colour_manual(values = c("#26B7FF","#26FF57", "#FFD846","#FF6600","#0D3BB2","#FF6934"), name="") +
+  scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  facet_wrap(~ sex) +
   theme_bw()
-
-plotLE_65 <- plotLE_65 + theme(legend.position = c(0.85, 0.25)) + 
-  scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
-                                           axis.title=element_text(size=12,face="bold"))
-
+plotLE_65 <- plotLE_65 + theme(axis.text=element_text(size=12),
+                                   axis.title=element_text(size=12,face="bold"))
 
 
 ### ------------------------------------------------ ###
 ###    For the gender gap in LE the LT by sex        ###
+### ------------------------------------------------ ###
+
+
+LE_M <- LE %>% filter(Age==0) %>% filter(sex=="male") %>% mutate(ex_M=ex) %>% select(- sex, - ex, - highlight_flag)
+LE_F <- LE %>% filter(Age==0) %>% filter(sex=="female") %>% select(- highlight_flag)
+
+LE_GAP <- left_join(LE_F, LE_M, by=c("Age", "Year", "cntry"))
+
+  # calculate the gap in LE
+LE_GAP <- LE_GAP %>% mutate(gap = ex - ex_M) %>% mutate(highlight_flag = ifelse(cntry=="SUI",T,F))
+
+# For plotting
+LE_GAP$cntry <- as.factor(LE_GAP$cntry)
+
+### -------------------------------------------------- ###
+
+# Plot the gap at the 2 time points
+
+# Life Expectancy at age 65
+plotgap <- LE_GAP %>% ggplot() +
+  # line plot
+  geom_line(aes(x = Year, y = gap, color=cntry, alpha = highlight_flag))  +
+  geom_point(aes(x = Year, y = gap, color=cntry, alpha = highlight_flag)) +
+  scale_y_continuous(name = "Female-Male Gap in LE") +
+  scale_x_continuous(name = " ") +
+  scale_colour_manual(values = c("#26B7FF","#26FF57", "#FFD846","#FF6600","#0D3BB2","#FF6934"), name="") +
+  scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  theme_bw()
+
+plotgap <- plotgap +  scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
+                                            axis.title=element_text(size=12,face="bold"))
+# theme(legend.position = c(0.85, 0.25)) +
+
+
+
+
+
+###########################################################################################################################
+
+
+
 
 ## Calculating the gender gap in LE over time (x-female LE, y-male LE)
 GAP <- function (x,y) {
@@ -162,29 +284,57 @@ GAP <- function (x,y) {
   return (z)
 }
 
-# Suisse
-Gap_SUI <- as.data.frame(cbind(rep(NA,140), seq(1876,2016,1)))
-names(Gap_SUI) <- c("gap","year")
 
-for (i in min(LT.SUI.fem$Year):max(LT.SUI.fem$Year)) {
-  Gap_SUI$gap[Gap_SUI$year==i] <- GAP(LT.SUI.fem$ex[LT.SUI.fem$Year==i],LT.SUI.mal$ex[LT.SUI.mal$Year==i])
+# Suisse
+Gap_SUI <- as.data.frame(cbind(rep(NA,29), seq(1960,2016,2),rep("SUI",29)))
+names(Gap_SUI) <- c("gap","year","cntry")
+
+for (i in min(LT_SUI_FEM$Year):max(LT_SUI_FEM$Year)) {
+  Gap_SUI$gap[Gap_SUI$year==i] <- GAP(LT_SUI_FEM$ex[LT_SUI_FEM$Year==i & LT_SUI_FEM$Age==0],LT_SUI_MAL$ex[LT_SUI_MAL$Year==i & LT_SUI_MAL$Age==0])
 }
 
-### -------------------------------------------------- ###
+# FRANCE
+Gap_FRA <- as.data.frame(cbind(rep(NA,57), seq(1960,2016,1),rep("FRA",57)))
+names(Gap_FRA) <- c("gap","year","cntry")
 
-# Plot the gap at the 2 time points
+for (i in min(LT.FRA.fem$Year):max(LT.FRA.fem$Year)) {
+  Gap_FRA$gap[Gap_FRA$year==i] <- GAP(LT.FRA.fem$ex[LT.FRA.fem$Year==i & LT.FRA.fem$Age==0],LT.FRA.mal$ex[LT.FRA.mal$Year==i & LT.FRA.mal$Age==0])
+}
 
-# Life Expectancy at age 65
-plotgap<- Gap_SUI %>% ggplot() +
-  # line plot
-  geom_line(aes(x = year, y = gap, color="#FF6600"))  +
-  geom_point(aes(x = year, y = gap, color="#FF6600")) +
-  scale_y_continuous(name = "Female-Male Gap in LE") +
-  scale_x_continuous(name = " ") +
-  scale_colour_manual(values = c("#FF6600"), name="", guide=F) +
-  #scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
-  theme_bw()
+# Spain
+Gap_ESP <- as.data.frame(cbind(rep(NA,57), seq(1960,2016,1),rep("ESP",57)))
+names(Gap_ESP) <- c("gap","year","cntry")
 
-plotgap <- plotgap + theme(legend.position = c(0.85, 0.25)) + 
-  scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
-                                            axis.title=element_text(size=12,face="bold"))
+for (i in min(LT.ESP.fem$Year):max(LT.ESP.fem$Year)) {
+  Gap_ESP$gap[Gap_ESP$year==i] <- GAP(LT.ESP.fem$ex[LT.ESP.fem$Year==i & LT.ESP.fem$Age==0],LT.ESP.mal$ex[LT.ESP.mal$Year==i & LT.ESP.mal$Age==0])
+}
+
+# Denmark
+Gap_DEN <- as.data.frame(cbind(rep(NA,57), seq(1960,2016,1), rep("DEN",57)))
+names(Gap_DEN) <- c("gap","year","cntry")
+
+for (i in min(LT.DEN.fem$Year):max(LT.DEN.fem$Year)) {
+  Gap_DEN$gap[Gap_DEN$year==i] <- GAP(LT.DEN.fem$ex[LT.DEN.fem$Year==i & LT.DEN.fem$Age==0],LT.DEN.mal$ex[LT.DEN.mal$Year==i  & LT.DEN.mal$Age==0])
+}
+
+# Poland
+Gap_POL <- as.data.frame(cbind(rep(NA,57), seq(1960,2016,1), rep("POL",57)))
+names(Gap_POL) <- c("gap","year","cntry")
+
+for (i in min(LT.POL.fem$Year):max(LT.POL.fem$Year)) {
+  Gap_POL$gap[Gap_POL$year==i] <- GAP(LT.POL.fem$ex[LT.POL.fem$Year==i & LT.POL.fem$Age==0],LT.POL.mal$ex[LT.POL.mal$Year==i & LT.POL.mal$Age==0])
+}
+
+# Russia
+Gap_RUS <- as.data.frame(cbind(rep(NA,54), seq(1960,2014,1),rep("RUS",54)))
+names(Gap_RUS) <- c("gap","year","cntry")
+
+for (i in min(LT.RUS.fem$Year):max(LT.RUS.fem$Year)) {
+  Gap_RUS$gap[Gap_RUS$year==i] <- GAP(LT.RUS.fem$ex[LT.RUS.fem$Year==i & LT.RUS.fem$Age==0],LT.RUS.mal$ex[LT.RUS.mal$Year==i & LT.RUS.mal$Age==0])
+}
+
+### Combine the gaps ###
+### ---------------- ###
+
+Gap <- bind_rows(Gap_SUI, Gap_FRA, Gap_ESP, Gap_DEN, Gap_POL, Gap_RUS)
+
