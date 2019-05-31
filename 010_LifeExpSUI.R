@@ -44,11 +44,15 @@ LT.FRA.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/FRACNP.
 LT.FRA.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/FRACNP.mltper_1x1.txt", fixup = T)
 
 
-# Spain
+# # Spain
+# 
+# LT.ESP.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/ESP.fltper_1x1.txt", fixup = T)
+# LT.ESP.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/ESP.mltper_1x1.txt", fixup = T)
 
-LT.ESP.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/ESP.fltper_1x1.txt", fixup = T)
-LT.ESP.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/ESP.mltper_1x1.txt", fixup = T)
+# Italy
 
+LT.ITA.fem <- readHMD("C:/Users/y4956294S/Documents/lt_female/fltper_1x1/ITA.fltper_1x1.txt", fixup = T)
+LT.ITA.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/ITA.mltper_1x1.txt", fixup = T)
 
 # Denmark
 
@@ -91,8 +95,15 @@ LT_FRA_FEM <- LT.FRA.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% 
   # to assure the same end year (2012)
   filter(Year >= 1960)
 
-## Females - ESP
-LT_ESP_FEM <- LT.ESP.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "ESP") %>% 
+# ## Females - ESP
+# LT_ESP_FEM <- LT.ESP.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "ESP") %>% 
+#   # subset only for the ex at birth (changeable)
+#   filter(Age == c(0,65)) %>% 
+#   # to assure the same end year (2012)
+#   filter(Year >= 1960)
+
+## Females - ITA
+LT_ITA_FEM <- LT.ITA.fem %>% select(ex,Age,Year) %>% mutate(sex = "female") %>% mutate(cntry = "ITA") %>% 
   # subset only for the ex at birth (changeable)
   filter(Age == c(0,65)) %>% 
   # to assure the same end year (2012)
@@ -140,8 +151,15 @@ LT_FRA_MAL <- LT.FRA.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mu
   # to assure the same end year (2012)
   filter(Year >= 1960)
 
-## ESP
-LT_ESP_MAL <- LT.ESP.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "ESP") %>% 
+# ## ESP
+# LT_ESP_MAL <- LT.ESP.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "ESP") %>% 
+#   # subset only for the ex at birth (changeable)
+#   filter(Age == c(0,65)) %>% 
+#   # to assure the same end year (2012)
+#   filter(Year >= 1960)
+
+## ITA
+LT_ITA_MAL <- LT.ITA.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mutate(cntry = "ITA") %>% 
   # subset only for the ex at birth (changeable)
   filter(Age == c(0,65)) %>% 
   # to assure the same end year (2012)
@@ -172,8 +190,9 @@ LT_RUS_MAL <- LT.RUS.mal %>% select(ex,Age,Year) %>% mutate(sex = "male") %>% mu
 
 ## Create a long dataset with all the countries
 
-LE <- bind_rows(LT_SUI_FEM,LT_SUI_MAL,LT_DEN_FEM,LT_DEN_MAL,LT_ESP_FEM,LT_ESP_MAL,LT_FRA_FEM,LT_FRA_MAL,
+LE <- bind_rows(LT_SUI_FEM,LT_SUI_MAL,LT_DEN_FEM,LT_DEN_MAL,LT_ITA_FEM,LT_ITA_MAL,LT_FRA_FEM,LT_FRA_MAL,
                 LT_POL_FEM, LT_POL_MAL, LT_RUS_FEM, LT_RUS_MAL) %>% 
+  # LT_ESP_FEM,LT_ESP_MAL,
   ## Cut to a uniform age range
   #filter(Year>1950) #%>% 
   # highlight Spanish values
@@ -270,7 +289,10 @@ plotgap <- plotgap +  scale_shape_discrete(guide=FALSE) + theme(axis.text=elemen
 # theme(legend.position = c(0.85, 0.25)) +
 
 
+# Maximum Gap after 1960
 
+maxGaP <- max(LE_GAP$gap[LE_GAP$cntry=="SUI"])
+LE_GAP$Year[LE_GAP$gap==maxGaP] # 1992
 
 
 ###########################################################################################################################
