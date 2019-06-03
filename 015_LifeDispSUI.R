@@ -30,9 +30,8 @@ library(latex2exp)
 
 ### load function
 source("MA5_FUN.R")
-source("sdfun.R")
 source("IQR_FUN.R")
-source("EDAG_FUN.R")
+source("EDAG_FUN.R")  #### Where
 
 
 ### ------------------------------------------------------------------------------------------------- ###
@@ -82,7 +81,7 @@ LT.RUS.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/RUS.mltpe
   # females (up to age 100)
   LT.SUI.fem <- LT.SUI.fem %>% filter(Age<=100) %>% filter(Year >= 1960) 
           # Test for 1 year
-          LT.SUI.fem2000 <- LT.SUI.fem %>% filter(Year==2000)
+          LT.SUI.fem2000 <- LT.SUI.fem %>% filter(Year==1995)
           ED_FEM2000 <- EDAG.FUN(LT.SUI.fem2000)/100000
           
   # female

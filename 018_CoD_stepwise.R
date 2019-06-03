@@ -28,8 +28,9 @@ library(DemoDecomp)
 
 
 # Functions:
-source("C:/Users/y4956294S/Documents/R/EDagger.R")
-source("C:/Users/y4956294S/Documents/R/LT.R")
+source("C:/Users/y4956294S/Documents/R/EDAG_FUN.R")
+source("C:/Users/y4956294S/Documents/R/LT_WHO.R")
+source("C:/Users/y4956294S/Documents/R/ModalA_FUN.R")
 
 ##########################################################################################################################
 
@@ -45,7 +46,7 @@ pop <- read.csv("C:/Users/y4956294S/Documents/Workshops and Conferences/Demograp
 causes <- unique(deaths$Cause) # all causes in the dataset
 smoking <- as.character(causes[substr(causes,1,3) %in% c("C33","C34")])
 obesity <-  as.character(causes[substr(causes,1,3) %in% c("E10","E11","E12","E13","E14")])
-alcohol <-  as.character(causes[substr(causes,1,3) %in% c("K70","K73","K74","F10", "G312", "G621", "G721", "I426", "K292","K860", "Q869")])
+alcohol <-  as.character(causes[substr(causes,1,3) %in% c("K70","K73","K74","F10") | substr(causes,1,4) %in% c("G312", "G621", "G721", "I426", "K292","K860", "Q869")])
 transport <- as.character(causes[substr(causes,1,1) == "V"])
 suicide <- as.character(causes[substr(causes,1,2) %in% c("X6","X7") | substr(causes,1,3) %in% c("X80","X81","X82","X83","X84", "X45","X65")])
 typ <- data.frame(name = rep(c("smoking","obesity","alcohol","transport","suicide"), times = c(length(smoking), length(obesity), length(alcohol), length(transport), length(suicide))),
@@ -59,37 +60,37 @@ table(deaths$typ, useNA = "always")
 deaths$typ[is.na(deaths$typ)] <- length(unique(typ$no)) + 1 # deaths that do not fall into one of the types are labeled as others
 
 # age groups
-x <- as.numeric(substr(names(deaths)[9:32], 2,3))
+x <- as.numeric(substr(names(deaths)[9:30], 2,3))
+# x95 <- as.numeric(substr(names(deaths)[9:30], 2,3))
 
-# objective functions to compute e0 and e-dagger from stacked rates
-e0 <- function(rates){
-  
-  mxc <- matrix(rates, ncol = 5, byrow = FALSE)
-  
-  mx <- rowSums(mxc, na.rm = TRUE)
-  
-  lt <- LT(Mx = mx, Age = x, radix = 1)
-  
-  return(lt$ex[1])
-  
-}
-
-ed <- function(rates){
-  
-  mxc <- matrix(rates, ncol = 5, byrow = FALSE)
-  
-  mx <- rowSums(mxc, na.rm = TRUE)
-  
-  lt <- LT(Mx = mx, Age = x, radix = 1)
-  
-  ed <- suppressWarnings(EDAG.F(lt))
-  
-  return(ed)
-  
-}
-
-
-
+        # objective functions to compute e0 and e-dagger from stacked rates
+        e0 <- function(rates){
+          
+          mxc <- matrix(rates, ncol = 6, byrow = FALSE)
+          
+          mx <- rowSums(mxc, na.rm = TRUE)
+          
+          lt <- LT(Mx = mx, Age = x)
+          
+          return(lt$ex[1])
+          
+        }
+        
+        ed <- function(rates){
+          
+          mxc <- matrix(rates, ncol = 6, byrow = FALSE)
+          
+          mx <- rowSums(mxc, na.rm = TRUE)
+          
+          lt <- LT(Mx = mx, Age = x)
+          
+          ed <- suppressWarnings(EDAG.FUN(lt))
+          
+          return(ed)
+          
+        }
+        
+        
 ### APPLICATION
 
 
@@ -100,10 +101,10 @@ ed <- function(rates){
 ### Idea to use the local maximum - When in the time frame was the gap between male and female mortality the biggest
 
 
-# Earliest year
-min(pop$Year[pop$Country == 4300]) # 1951
-pop_1 <- pop[pop$Country == 4300 & pop$Year == 1951,]
-deaths_1 <- deaths[deaths$Year == 1951 & deaths$Cause != "A000",]
+# # Earliest year
+# min(pop$Year[pop$Country == 4300]) # 1951
+# pop_1 <- pop[pop$Country == 4300 & pop$Year == 1951,]
+# deaths_1 <- deaths[deaths$Year == 1951 & deaths$Cause != "A000",]
 
 # 2) 1995 - first year with ICD 10
 
@@ -132,45 +133,16 @@ pop_3 <- pop_3 %>% mutate(Pop23 = Pop23+Pop24+Pop25) %>% mutate(Pop24=NA) %>% mu
 mxc.males95 <- do.call(cbind,by(data = deaths_2[deaths_2$Sex == 1,9:30], INDICES = deaths_2$typ[deaths_2$Sex == 1], FUN = colSums)) / unlist(pop_2[pop_2$Sex == 1,8:29])
 mxc.females95 <- do.call(cbind,by(data = deaths_2[deaths_2$Sex == 2,9:30], INDICES = deaths_2$typ[deaths_2$Sex == 2], FUN = colSums)) / unlist(pop_2[pop_2$Sex == 2,8:29])
 
-# age groups
-x95 <- as.numeric(substr(names(deaths)[9:30], 2,3))
 
-
-cod95_M <- matplot(x95, log(mxc.males95), type = "l", lty= 1)
-cod95_F <- matplot(x95, log(mxc.females95), type = "l", lty= 1)
+cod95_M <- matplot(x, log(mxc.males95), type = "l", lty= 1)
+cod95_F <- matplot(x, log(mxc.females95), type = "l", lty= 1)
 
 # stack into a vector
 r.males95 <- as.vector(mxc.males95)
 r.females95 <- as.vector(mxc.females95)
 
-# Adapt functions to changes in the age structure
-
-e0 <- function(rates){
-  
-  mxc <- matrix(rates, ncol = 6, byrow = FALSE)
-  
-  mx <- rowSums(mxc, na.rm = TRUE)
-  
-  lt <- LT(Mx = mx, Age = x95, radix = 1)
-  
-  return(lt$ex[1])
-  
-}
-
-ed <- function(rates){
-  
-  mxc <- matrix(rates, ncol = 6, byrow = FALSE)
-  
-  mx <- rowSums(mxc, na.rm = TRUE)
-  
-  lt <- LT(Mx = mx, Age = x95, radix = 1)
-  
-  ed <- suppressWarnings(EDAG.F(lt))
-  
-  return(ed)
-}
-
 # run decomposition for e0
+
 dec_95 <- stepwise_replacement(func = e0, pars1 = r.males95, pars2 = r.females95)
 
 sum(dec_95) ; e0(r.females95) - e0(r.males95) # sum of decomposition is equal to difference
@@ -178,7 +150,17 @@ cxc <- matrix(dec_95, ncol = 6, byrow = FALSE) # rearange as matrix
 barplot(colSums(cxc), las = 2) # contribution by cause of death
 barplot(t(cxc)) # contribution by cause and age
 
-# 3. Plot and add color
+# 3. Plot and add color (make it colorblind friendly)
+
+  # The palette with black:
+  cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  
+  # To use for fills, add
+  scale_fill_manual(values=cbbPalette)
+  
+  # To use for line and point colors, add
+  scale_colour_manual(values=cbPalette)
+
 
 cause95 <- as.data.frame(cxc)
 names(cause95) <- c("smoking", "obesity","alcohol" ,"transport", "suicide", "others")
@@ -196,7 +178,7 @@ line_causes <- cause95 %>% ggplot() + geom_line(aes(x = Age, y = allcause, color
                geom_line(aes(x = Age, y = suicide, color="suicide")) +
                scale_x_continuous(name = "Age") +
                scale_y_continuous(name = "Difference in mx by cause")  +
-               scale_color_discrete(name= " ") +
+               scale_colour_manual(values=cbbPalette, name=" ") +
               theme_bw()
 
 line_causes + theme(axis.text=element_text(size=12),
@@ -213,7 +195,7 @@ bar_causes <- c95 %>% filter(Cause!="allcause") %>% ggplot(aes(as.factor(Age))) 
                       geom_bar(aes(weight = Contribution, fill=Cause))+
                       scale_x_discrete(name = "Age") +
                       scale_y_continuous(name = "Contribution by Cause")  +
-                      scale_fill_brewer(palette = "Set2") +
+                      scale_fill_manual(values=cbbPalette, name=" ") +
                       theme_bw()
                       
 bar_causes + theme(axis.text=element_text(size=12),
@@ -223,7 +205,8 @@ bar_causes + theme(axis.text=element_text(size=12),
 bar_causes2 <- c95 %>% filter(Cause!="allcause") %>% ggplot(aes(x=Cause, y=Contribution, fill=Cause)) + 
                       geom_bar( stat="identity")+
                       scale_x_discrete(name = "Causes") +
-                      scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values=cbbPalette, name=" ") +                    
+  #scale_fill_brewer(palette = "Set2") +
                       theme_bw()
 
 bar_causes2 + theme(axis.text=element_text(size=12),
@@ -233,7 +216,6 @@ bar_causes2 + theme(axis.text=element_text(size=12),
 #### EDAGGER
 ####
 
-# run decomposition for e-dagger
 dec_95 <- stepwise_replacement(func = ed, pars1 = r.males95, pars2 = r.females95)
 
 sum(dec_95) ; ed(r.females95) - ed(r.males95) # sum of decomposition is equal to difference
@@ -261,7 +243,8 @@ bar_causes <- c95ed %>% filter(Cause!="allcause") %>% ggplot(aes(as.factor(Age))
   geom_bar(aes(weight = Contribution, fill=Cause))+
   scale_x_discrete(name = "Age") +
   scale_y_continuous(name = "Contribution by Cause")  +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values=cbbPalette, name=" ") +
+  #scale_fill_brewer(palette = "Set2") +
   theme_bw()
 
 bar_causes + theme(axis.text=element_text(size=12),
@@ -271,7 +254,7 @@ bar_causes + theme(axis.text=element_text(size=12),
 bar_causes2 <- c95ed %>% filter(Cause!="allcause") %>% ggplot(aes(x=Cause, y=Contribution, fill=Cause)) + 
   geom_bar( stat="identity")+
   scale_x_discrete(name = "Causes") +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values=cbbPalette, name=" ") +
   theme_bw()
 
 bar_causes2 + theme(axis.text=element_text(size=12),
@@ -290,11 +273,13 @@ bar_causes2 + theme(axis.text=element_text(size=12),
 # ---- #
 # 2013 #
 # ---- #
+
+
 mxc.males13 <- do.call(cbind,by(data = deaths_3[deaths_3$Sex == 1,9:30], INDICES = deaths_3$typ[deaths_3$Sex == 1], FUN = colSums)) / unlist(pop_3[pop_3$Sex == 1,8:29])
 mxc.females13 <- do.call(cbind,by(data = deaths_3[deaths_3$Sex == 2,9:30], INDICES = deaths_3$typ[deaths_3$Sex == 2], FUN = colSums)) / unlist(pop_3[pop_3$Sex == 2,8:29])
 
-cod13_M <- matplot(x95, log(mxc.males13), type = "l", lty= 1)
-cod13_F <- matplot(x95, log(mxc.females13), type = "l", lty= 1)
+cod13_M <- matplot(x, log(mxc.males13), type = "l", lty= 1)
+cod13_F <- matplot(x, log(mxc.females13), type = "l", lty= 1)
 
 # stack into a vector
 r.males13 <- as.vector(mxc.males13)
@@ -302,34 +287,6 @@ r.females13 <- as.vector(mxc.females13)
 
 # age groups
 x <- as.numeric(substr(names(deaths)[9:30], 2,3))
-
-# objective functions to compute e0 and e-dagger from stacked rates
-e0 <- function(rates){
-  
-  mxc <- matrix(rates, ncol = 6, byrow = FALSE)
-  
-  mx <- rowSums(mxc, na.rm = TRUE)
-  
-  lt <- LT(Mx = mx, Age = x, radix = 1)
-  
-  return(lt$ex[1])
-  
-}
-
-ed <- function(rates){
-  
-  mxc <- matrix(rates, ncol = 6, byrow = FALSE)
-  
-  mx <- rowSums(mxc, na.rm = TRUE)
-  
-  lt <- LT(Mx = mx, Age = x, radix = 1)
-  
-  ed <- suppressWarnings(EDAG.F(lt))
-  
-  return(ed)
-  
-}
-
 
 # run decomposition for e0
 dec13 <- stepwise_replacement(func = e0, pars1 = r.males13, pars2 = r.females13)
@@ -358,7 +315,7 @@ line_causes <- cause13 %>% ggplot() + geom_line(aes(x = Age, y = allcause, color
   geom_line(aes(x = Age, y = suicide, color="suicide")) +
   scale_x_continuous(name = "Age") +
   scale_y_continuous(name = "Difference in mx by cause")  +
-  scale_color_discrete(name= " ") +
+  scale_color_manual(values=cbbPalette, name=" ") +
   theme_bw()
 
 line_causes + theme(axis.text=element_text(size=12),
@@ -375,7 +332,7 @@ bar_causes13 <- c13 %>% filter(Cause!="allcause") %>% ggplot(aes(as.factor(Age))
   geom_bar(aes(weight = Contribution, fill=Cause))+
   scale_x_discrete(name = "Age") +
   scale_y_continuous(name = "Contribution by Cause")  +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values=cbbPalette, name=" ") +
   theme_bw()
 
 bar_causes13 + theme(axis.text=element_text(size=12),
@@ -385,11 +342,42 @@ bar_causes13 + theme(axis.text=element_text(size=12),
 bar_causes2 <- c13 %>% filter(Cause!="allcause") %>% ggplot(aes(x=Cause, y=Contribution, fill=Cause)) + 
   geom_bar( stat="identity")+
   scale_x_discrete(name = "Causes") +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values=cbbPalette, name=" ") +
   theme_bw()
 
 bar_causes2 + theme(axis.text=element_text(size=12),
                     axis.title=element_text(size=14,face="bold"), strip.text.y = element_text(size=12, face="bold"))
+
+# Plot on the same scale
+
+c95 <- c95 %>% mutate(Year=1995)
+c13 <- c13 %>% mutate(Year=2013)
+
+ctotal <- union(c95, c13)
+
+##### Plot them again!
+
+# contribution by cause (combined over ages) + facetwrap
+bar_causes3 <- ctotal %>% filter(Cause!="allcause") %>% ggplot(aes(x=Cause, y=Contribution, fill=Cause)) + 
+  geom_bar( stat="identity")+
+  scale_x_discrete(name = "Causes") +
+  scale_fill_manual(values=cbbPalette, name=" ") +
+  theme_bw()
+
+bar_causes3 + facet_grid(. ~ Year) + theme(axis.text=element_text(size=12),
+                    axis.title=element_text(size=14,face="bold"), strip.text.y = element_text(size=12, face="bold"))
+
+
+# bar plot - contribution by age and cause of death
+bar_causestotal <- ctotal %>% filter(Cause!="allcause") %>% ggplot(aes(as.factor(Age))) + 
+  geom_bar(aes(weight = Contribution, fill=Cause))+
+  scale_x_discrete(name = "Age") +
+  scale_y_continuous(name = "Contribution by Cause")  +
+  scale_fill_manual(values=cbbPalette, name=" ") +
+  theme_bw()
+
+bar_causestotal + facet_grid(. ~ Year) + theme(axis.text=element_text(size=12),
+                     axis.title=element_text(size=14,face="bold"), strip.text.y = element_text(size=12, face="bold"))
 
 ####
 #### EDAGGER
@@ -423,19 +411,54 @@ bar_causes <- c13ed %>% filter(Cause!="allcause") %>% ggplot(aes(as.factor(Age))
   geom_bar(aes(weight = Contribution, fill=Cause))+
   scale_x_discrete(name = "Age") +
   scale_y_continuous(name = "Contribution by Cause")  +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values=cbbPalette, name=" ") +
   theme_bw()
 
 bar_causes + theme(axis.text=element_text(size=12),
                    axis.title=element_text(size=14,face="bold"), strip.text.y = element_text(size=12, face="bold"))
 
 # contribution by cause (combined over ages)
-bar_causes2 <- c95ed %>% filter(Cause!="allcause") %>% ggplot(aes(x=Cause, y=Contribution, fill=Cause)) + 
+bar_causes2 <- c13ed %>% filter(Cause!="allcause") %>% ggplot(aes(x=Cause, y=Contribution, fill=Cause)) + 
   geom_bar( stat="identity")+
   scale_x_discrete(name = "Causes") +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values=cbbPalette, name=" ") +
   theme_bw()
 
 bar_causes2 + theme(axis.text=element_text(size=12),
                     axis.title=element_text(size=14,face="bold"), strip.text.y = element_text(size=12, face="bold"))
 
+
+
+
+
+
+# Plot on the same scale
+
+c95ed <- c95ed %>% mutate(Year=1995)
+c13ed <- c13ed %>% mutate(Year=2013)
+
+ctotal <- union(c95ed, c13ed)
+
+##### Plot them again!
+
+# contribution by cause (combined over ages) + facetwrap
+bar_causes4 <- ctotal %>% filter(Cause!="allcause") %>% ggplot(aes(x=Cause, y=Contribution, fill=Cause)) + 
+  geom_bar( stat="identity")+
+  scale_x_discrete(name = "Causes") +
+  scale_fill_manual(values=cbbPalette, name=" ") +
+  theme_bw()
+
+bar_causes4 + facet_grid(. ~ Year) + theme(axis.text=element_text(size=12),
+                                           axis.title=element_text(size=14,face="bold"), strip.text.y = element_text(size=12, face="bold"))
+
+
+# bar plot - contribution by age and cause of death
+bar_causestotaled <- ctotal %>% filter(Cause!="allcause") %>% ggplot(aes(as.factor(Age))) + 
+  geom_bar(aes(weight = Contribution, fill=Cause))+
+  scale_x_discrete(name = "Age") +
+  scale_y_continuous(name = "Contribution by Cause")  +
+  scale_fill_manual(values=cbbPalette, name=" ") +
+  theme_bw()
+
+bar_causestotaled + facet_grid(. ~ Year) + theme(axis.text=element_text(size=12),
+                                               axis.title=element_text(size=14,face="bold"), strip.text.y = element_text(size=12, face="bold"))
