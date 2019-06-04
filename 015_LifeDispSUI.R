@@ -137,35 +137,35 @@ LT.RUS.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/RUS.mltpe
   edag_both_FRA <- edag_both_FRA %>% mutate(cntry = "FRA")
   
   
-  ### Spain
+  ### Italy
   ### -----
   
   # females (up to age 100)
-  LT.ESP.fem <- LT.ESP.fem %>% filter(Age<=100) %>% filter(Year >= 1960) 
+  LT.ITA.fem <- LT.ITA.fem %>% filter(Age<=100) %>% filter(Year >= 1960) 
   # Test for 1 year
-  LT.ESP.fem2000 <- LT.ESP.fem %>% filter(Year==2000)
-  ED_FEM2000 <- EDAG.FUN(LT.ESP.fem2000)/100000
+  LT.ITA.fem2000 <- LT.ITA.fem %>% filter(Year==2000)
+  ED_FEM2000 <- EDAG.FUN(LT.ITA.fem2000)/100000
   
   # female
-  ED_FEM_ESP <- by(data = LT.ESP.fem, INDICES = LT.ESP.fem$Year, FUN = EDAG.FUN)
+  ED_FEM_ITA <- by(data = LT.ITA.fem, INDICES = LT.ITA.fem$Year, FUN = EDAG.FUN)
   # This step is necessary because our formula is based on l_0 = 1 and the HMD standard l_0 = 100000
-  ED_FEM_ESP <- ED_FEM_ESP/100000
+  ED_FEM_ITA <- ED_FEM_ITA/100000
   #ED_FEM_ESP <- as.matrix(ED_FEM_ESP)
   
   # males
-  LT.ESP.mal <- LT.ESP.mal %>% filter(Age<=100) %>% filter(Year >= 1960) 
-  ED_MAL_ESP <- by(data = LT.ESP.mal, INDICES = LT.ESP.mal$Year, FUN = EDAG.FUN)
+  LT.ITA.mal <- LT.ITA.mal %>% filter(Age<=100) %>% filter(Year >= 1960) 
+  ED_MAL_ITA <- by(data = LT.ITA.mal, INDICES = LT.ITA.mal$Year, FUN = EDAG.FUN)
   # This step is necessary because our formula is based on l_0 = 1 and the HMD standard l_0 = 100000
-  ED_MAL_ESP <- ED_MAL_ESP/100000
+  ED_MAL_ITA <- ED_MAL_ITA/100000
   #ED_MAL_ESP <- as.matrix(ED_MAL_ESP)
   
   # bind data ESPme and give a country stamp
   
-  edag_both_ESP <- as.data.frame(cbind(unique(LT.ESP.fem$Year),ED_FEM_ESP, ED_MAL_ESP))
+  edag_both_ITA <- as.data.frame(cbind(unique(LT.ITA.fem$Year),ED_FEM_ITA, ED_MAL_ITA))
   
-  colnames(edag_both_ESP) <- c("Year","ed_fem","ed_mal")
+  colnames(edag_both_ITA) <- c("Year","ed_fem","ed_mal")
   
-  edag_both_ESP <- edag_both_ESP %>% mutate(cntry = "ESP") 
+  edag_both_ITA <- edag_both_ITA %>% mutate(cntry = "ITA") 
   
   
   ### Denmark
@@ -268,7 +268,7 @@ LT.RUS.mal <- readHMD("C:/Users/y4956294S/Documents/lt_male/mltper_1x1/RUS.mltpe
   
   ## Create a long dataset with all the countries
   
-  LSD <- bind_rows(edag_both_SUI,edag_both_FRA, edag_both_ESP, edag_both_DEN, edag_both_POL, edag_both_RUS) %>% 
+  LSD <- bind_rows(edag_both_SUI,edag_both_FRA, edag_both_ITA, edag_both_DEN, edag_both_POL, edag_both_RUS) %>% 
     ## Cut to a uniform age range
     #filter(Year>1950) #%>% 
     # highlight Spanish values
@@ -316,9 +316,24 @@ plotgap_LSD <- LSD %>% ggplot() +
 plotgap_LSD <- plotgap_LSD +  scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
                                                                 axis.title=element_text(size=12,face="bold"))
 
+######### Plot in grey - increased visibility
 
+# calculate the gap in LE
+LSD <- LSD %>% mutate(gap = ed_mal - ed_fem)
 
+# Life Expectancy at age 65
+plotgap_LSD <- LSD %>% ggplot() +
+  # line plot
+  geom_line(aes(x = Year, y = gap, color=cntry, alpha = highlight_flag))  +
+  geom_point(aes(x = Year, y = gap, color=cntry, alpha = highlight_flag)) +
+  scale_y_continuous(name = "Male-Female Gap in Lifespan Disparity") +
+  scale_x_continuous(name = " ") +
+  scale_colour_manual(values = c("#26B7FF","#26FF57", "#FFD846","#FF6600","#0D3BB2","#FF6934"), name="") +
+  scale_alpha_discrete(range = c(0.25, 0.85), name="", guide=F) +
+  theme_bw()
 
+plotgap_LSD <- plotgap_LSD +  scale_shape_discrete(guide=FALSE) + theme(axis.text=element_text(size=12),
+                                                                        axis.title=element_text(size=12,face="bold"))
 
 
 
