@@ -187,7 +187,7 @@ dump("CV.FUN", file="CV_FUN.R")
 ### Attempt to write a similar efficient function compared to the sd.fun
 ## Input: life table-data frame (more specific, dx values, x, and years)
 
-IQR.FUN <- function(x){
+IQR.FUN <- function(x, smooth=FALSE){
   
   ### Smoothing the values / or not
   if(smooth == TRUE){
